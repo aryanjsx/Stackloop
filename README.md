@@ -8,7 +8,7 @@
   <a href="#"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License" /></a>
   <a href="#"><img src="https://img.shields.io/badge/Version-0.1.0-orange.svg" alt="Version" /></a>
   <a href="#"><img src="https://img.shields.io/badge/Status-Alpha-yellow.svg" alt="Status" /></a>
-  <a href="#"><img src="https://img.shields.io/badge/Docs-Coming%20Soon-lightgrey.svg" alt="Docs" /></a>
+  <a href="docs/"><img src="https://img.shields.io/badge/Docs-Available-brightgreen.svg" alt="Docs" /></a>
 </p>
 
 StackLoop is an AI-powered developer discovery platform designed to help developers discover, understand, learn from, and contribute to open-source projects with greater clarity and confidence.
@@ -29,6 +29,9 @@ StackLoop exists to make open source more approachable, more discoverable, and m
 - Repository health and contribution insights for maintainers and contributors
 - A focused experience for discovering meaningful open-source projects
 - GitHub OAuth authentication with PKCE, state validation, refresh-token rotation, and protected session routes
+- Repository ingestion and metadata collection for GitHub repositories
+- Prisma-backed persistence scaffolding for users, repositories, collections, recommendations, and activity
+- Modular API structure for auth, repository collection, and data access layers
 
 ## Why StackLoop?
 
@@ -61,7 +64,8 @@ A live demo will be available soon. In the meantime, the project is being develo
 
 ### Backend
 - Node.js
-- Express.js
+- TypeScript
+- Prisma ORM
 
 ### AI Layer
 - Python
@@ -82,7 +86,7 @@ StackLoop is composed of a modern web frontend, service-oriented backend APIs, a
 ### High-Level Architecture
 
 - The frontend provides the user experience for browsing repositories, reading insights, and exploring recommendations.
-- The backend exposes APIs for repository data, recommendations, and platform workflows.
+- The API layer now includes modular authentication, repository collection, and Prisma-backed persistence services.
 - The AI layer generates summaries, learning paths, and contribution guidance from repository context.
 - PostgreSQL stores core application data, while Redis provides caching and performance optimization.
 - Docker and Azure Container Apps support containerized deployment and scalable hosting.
@@ -123,11 +127,20 @@ npm install
 npm --prefix apps/api install
 ```
 
-### Run the API Auth Module
+### Run the API Module
 
 ```bash
+npm --prefix apps/api install
 npm --prefix apps/api test
-npm --prefix apps/api build
+npm --prefix apps/api run build
+```
+
+If you plan to connect to a PostgreSQL database locally, initialize Prisma and run migrations:
+
+```bash
+cd apps/api
+npx prisma generate --schema prisma/schema.prisma
+npx prisma migrate dev --name init
 ```
 
 ### Start the Application
@@ -154,6 +167,9 @@ Example:
 PORT=3000
 DATABASE_URL=postgresql://user:password@localhost:5432/stackloop
 REDIS_URL=redis://localhost:6379
+GITHUB_CLIENT_ID=your_github_client_id
+GITHUB_CLIENT_SECRET=your_github_client_secret
+GITHUB_REDIRECT_URI=http://localhost:3000/auth/github/callback
 OPENAI_API_KEY=your_api_key_here
 ```
 
@@ -165,27 +181,40 @@ OPENAI_API_KEY=your_api_key_here
 .
 ├── apps/
 │   ├── web/                # Next.js frontend
-│   └── api/                # Express.js backend with auth module
+│   └── api/                # TypeScript API package with auth and repository modules
+│       ├── prisma/         # Prisma schema and seed data
 │       ├── src/auth/       # Controllers, services, middleware, DTOs, validators
-│       └── tests/          # Auth and API unit tests
+│       ├── src/repositories/ # GitHub repository collector and enrichment services
+│       ├── src/database/   # Prisma client and repository abstractions
+│       └── tests/          # Auth, collector, and repository unit tests
 ├── services/
 │   └── ai/                 # FastAPI AI service
-├── db/                     # Database migrations and schema
 ├── docs/                   # Project documentation
 ├── docker/                 # Docker configuration
 ├── .github/                # GitHub workflows and automation
 └── README.md
 ```
 
-### Authentication endpoints
+### Current API surface
 
-The current API authentication surface includes:
+The current API surface includes:
 
 - /auth/github/login
 - /auth/github/callback
 - /auth/logout
 - /auth/refresh
 - /auth/me
+- /repositories/sync
+- /repositories/sync/batch
+
+### Current implementation status
+
+The repository now includes working scaffolding for:
+
+- GitHub OAuth login, callback handling, session creation, and refresh-token rotation
+- Repository ingestion and enrichment from GitHub metadata
+- Prisma schema and repository abstractions for core platform entities
+- Automated tests for auth, repository collection, and database repository behavior
 
 ## Development Workflow
 

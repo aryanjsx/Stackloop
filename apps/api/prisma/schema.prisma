@@ -1,0 +1,439 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String    @id @default(uuid())
+  githubId            BigInt    @unique @map("github_id")
+  username            String
+  displayName         String?   @map("display_name")
+  email               String?   @db.VarChar(320)
+  avatarUrl           String?   @map("avatar_url")
+  bio                 String?
+  location            String?
+  websiteUrl          String?   @map("website_url")
+  company             String?
+  role                String    @default("user")
+  isActive            Boolean   @default(true) @map("is_active")
+  isVerified          Boolean   @default(false) @map("is_verified")
+  githubConnectedAt   DateTime? @map("github_connected_at")
+  lastLoginAt         DateTime? @map("last_login_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
+
+  sessions            Session[]
+  collections         Collection[]
+  maintainers         Maintainer[]
+  learningPaths       LearningPath[]
+  savedRepositories   SavedRepository[]
+  recommendations     Recommendation[]
+  contributions       Contribution[]
+  activity            Activity[]
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+
+  @@index([username])
+  @@index([githubId])
+  @@index([createdAt])
+  @@index([isActive])
+  @@map("users")
+}
+
+model Session {
+  id                    String    @id @default(uuid())
+  userId                String    @map("user_id")
+  provider              String    @default("github")
+  accessTokenEncrypted  String?   @map("access_token_encrypted")
+  refreshTokenEncrypted String?   @map("refresh_token_encrypted")
+  expiresAt             DateTime  @map("expires_at")
+  revokedAt             DateTime? @map("revoked_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([revokedAt])
+  @@map("sessions")
+}
+
+model Maintainer {
+  id          String   @id @default(uuid())
+  userId      String?  @map("user_id")
+  githubLogin String   @map("github_login")
+  displayName String?  @map("display_name")
+  avatarUrl   String?  @map("avatar_url")
+  company     String?
+  websiteUrl  String?  @map("website_url")
+  isVerified  Boolean  @default(false) @map("is_verified")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  repositories RepositoryMaintainer[]
+
+  @@index([userId])
+  @@index([githubLogin])
+  @@map("maintainers")
+}
+
+model Repository {
+  id                String    @id @default(uuid())
+  githubId          BigInt    @unique @map("github_id")
+  ownerLogin        String    @map("owner_login")
+  name              String
+  fullName          String    @map("full_name")
+  description       String?
+  homepageUrl       String?   @map("homepage_url")
+  repositoryUrl     String    @map("repository_url")
+  defaultBranch     String    @default("main") @map("default_branch")
+  language          String?
+  stargazersCount   Int       @default(0) @map("stargazers_count")
+  forksCount        Int       @default(0) @map("forks_count")
+  openIssuesCount   Int       @default(0) @map("open_issues_count")
+  watchersCount     Int       @default(0) @map("watchers_count")
+  sizeKb            Int?      @map("size_kb")
+  isArchived        Boolean   @default(false) @map("is_archived")
+  isDisabled        Boolean   @default(false) @map("is_disabled")
+  isPrivate         Boolean   @default(false) @map("is_private")
+  isVerified        Boolean   @default(false) @map("is_verified")
+  lastPushAt        DateTime? @map("last_push_at")
+  lastSyncedAt      DateTime? @map("last_synced_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
+
+  maintainers     RepositoryMaintainer[]
+  technologies    RepositoryTechnology[]
+  categories      RepositoryCategory[]
+  aiMetadata      RepositoryAiMetadata[]
+  contributions   Contribution[]
+  savedBy         SavedRepository[]
+  recommendations Recommendation[]
+  activity        Activity[]
+  collections     CollectionRepository[]
+  learningPaths   LearningPathRepository[]
+
+  @@index([fullName])
+  @@index([ownerLogin])
+  @@index([stargazersCount])
+  @@index([lastPushAt])
+  @@index([isArchived])
+  @@index([isPrivate])
+  @@index([createdAt])
+  @@map("repositories")
+}
+
+model RepositoryMaintainer {
+  repositoryId String @map("repository_id")
+  maintainerId String @map("maintainer_id")
+  role         String? @default("maintainer")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  maintainer   Maintainer @relation(fields: [maintainerId], references: [id], onDelete: Cascade)
+
+  @@id([repositoryId, maintainerId])
+  @@index([maintainerId])
+  @@map("repository_maintainers")
+}
+
+model Technology {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  name        String
+  description String?
+  category    String?
+  parentId    String?  @map("parent_id")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  parent      Technology? @relation("TechnologyToTechnology", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Technology[] @relation("TechnologyToTechnology")
+  repositories RepositoryTechnology[]
+  learningPaths LearningPathTechnology[]
+
+  @@index([slug])
+  @@index([name])
+  @@index([parentId])
+  @@map("technologies")
+}
+
+model Category {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  name        String
+  description String?
+  parentId    String?  @map("parent_id")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  parent      Category? @relation("CategoryToCategory", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Category[] @relation("CategoryToCategory")
+  repositories RepositoryCategory[]
+
+  @@index([slug])
+  @@index([name])
+  @@map("categories")
+}
+
+model RepositoryTechnology {
+  repositoryId    String @map("repository_id")
+  technologyId    String @map("technology_id")
+  confidenceScore  Decimal? @default(1.0) @map("confidence_score") @db.Decimal(5, 4)
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  repository      Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  technology      Technology @relation(fields: [technologyId], references: [id], onDelete: Cascade)
+
+  @@id([repositoryId, technologyId])
+  @@index([technologyId])
+  @@index([confidenceScore])
+  @@map("repository_technologies")
+}
+
+model RepositoryCategory {
+  repositoryId String @map("repository_id")
+  categoryId   String @map("category_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  category     Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([repositoryId, categoryId])
+  @@index([categoryId])
+  @@map("repository_categories")
+}
+
+model LearningPath {
+  id                  String   @id @default(uuid())
+  slug                String   @unique
+  title               String
+  description         String?
+  difficulty          String?
+  estimatedDurationDays Int?   @map("estimated_duration_days")
+  isFeatured          Boolean  @default(false) @map("is_featured")
+  createdBy           String?  @map("created_by")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  createdByUser       User?    @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+  repositories        LearningPathRepository[]
+  technologies        LearningPathTechnology[]
+
+  @@index([slug])
+  @@index([isFeatured])
+  @@index([createdAt])
+  @@map("learning_paths")
+}
+
+model LearningPathRepository {
+  learningPathId String @map("learning_path_id")
+  repositoryId   String @map("repository_id")
+  sequenceOrder  Int    @default(1) @map("sequence_order")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  learningPath   LearningPath @relation(fields: [learningPathId], references: [id], onDelete: Cascade)
+  repository     Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@id([learningPathId, repositoryId])
+  @@index([repositoryId])
+  @@index([learningPathId, sequenceOrder])
+  @@map("learning_path_repositories")
+}
+
+model LearningPathTechnology {
+  learningPathId String @map("learning_path_id")
+  technologyId   String @map("technology_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  learningPath   LearningPath @relation(fields: [learningPathId], references: [id], onDelete: Cascade)
+  technology     Technology @relation(fields: [technologyId], references: [id], onDelete: Cascade)
+
+  @@id([learningPathId, technologyId])
+  @@map("learning_path_technologies")
+}
+
+model Collection {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  name        String
+  description String?
+  isPublic    Boolean  @default(false) @map("is_public")
+  isFeatured  Boolean  @default(false) @map("is_featured")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repositories CollectionRepository[]
+  savedRepositories SavedRepository[]
+
+  @@index([userId])
+  @@index([isPublic])
+  @@index([isFeatured])
+  @@map("collections")
+}
+
+model CollectionRepository {
+  collectionId String @map("collection_id")
+  repositoryId String @map("repository_id")
+  addedAt      DateTime @default(now()) @map("added_at")
+
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@id([collectionId, repositoryId])
+  @@index([repositoryId])
+  @@map("collection_repositories")
+}
+
+model SavedRepository {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  repositoryId  String   @map("repository_id")
+  collectionId  String?  @map("collection_id")
+  savedAt       DateTime @default(now()) @map("saved_at")
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repository    Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  collection    Collection? @relation(fields: [collectionId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, repositoryId])
+  @@index([userId])
+  @@index([repositoryId])
+  @@index([savedAt])
+  @@map("saved_repositories")
+}
+
+model Recommendation {
+  id                  String   @id @default(uuid())
+  userId              String   @map("user_id")
+  repositoryId        String   @map("repository_id")
+  recommendationType  String   @map("recommendation_type")
+  score               Decimal  @default(0) @db.Decimal(8, 4)
+  reason              String?
+  expiresAt           DateTime? @map("expires_at")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repository          Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, repositoryId, recommendationType])
+  @@index([userId])
+  @@index([repositoryId])
+  @@index([score])
+  @@index([expiresAt])
+  @@map("recommendations")
+}
+
+model RepositoryAiMetadata {
+  id              String   @id @default(uuid())
+  repositoryId    String   @map("repository_id")
+  summaryText     String?  @map("summary_text")
+  summaryVersion  String?  @map("summary_version")
+  aiModel         String?  @map("ai_model")
+  confidenceScore Decimal? @map("confidence_score") @db.Decimal(5, 4)
+  generatedAt     DateTime @default(now()) @map("generated_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  repository      Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@unique([repositoryId, summaryVersion])
+  @@index([repositoryId])
+  @@index([generatedAt])
+  @@index([confidenceScore])
+  @@map("repository_ai_metadata")
+}
+
+model Contribution {
+  id                String   @id @default(uuid())
+  userId            String   @map("user_id")
+  repositoryId      String   @map("repository_id")
+  contributionType  String   @map("contribution_type")
+  title             String?
+  description       String?
+  externalUrl       String?  @map("external_url")
+  state             String   @default("open")
+  difficulty        String?
+  startedAt         DateTime? @map("started_at")
+  completedAt       DateTime? @map("completed_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repository        Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([repositoryId])
+  @@index([state])
+  @@index([createdAt])
+  @@map("contributions")
+}
+
+model Activity {
+  id            String   @id @default(uuid())
+  userId        String?  @map("user_id")
+  repositoryId  String?  @map("repository_id")
+  activityType  String   @map("activity_type")
+  entityType    String?  @map("entity_type")
+  entityId      String?  @map("entity_id")
+  metadata      Json?    @db.JsonB
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  repository    Repository? @relation(fields: [repositoryId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([repositoryId, createdAt])
+  @@index([activityType])
+  @@index([createdAt])
+  @@map("activity")
+}
+
+model Notification {
+  id                String   @id @default(uuid())
+  userId            String   @map("user_id")
+  notificationType  String   @map("notification_type")
+  title             String
+  body              String?
+  payload           Json?    @db.JsonB
+  isRead            Boolean  @default(false) @map("is_read")
+  createdAt         DateTime @default(now()) @map("created_at")
+  readAt            DateTime? @map("read_at")
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt])
+  @@index([isRead])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?  @map("user_id")
+  action      String
+  entityType  String?  @map("entity_type")
+  entityId    String?  @map("entity_id")
+  metadata    Json?    @db.JsonB
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

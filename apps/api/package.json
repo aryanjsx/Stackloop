@@ -5,7 +5,14 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "node --test --import tsx tests/**/*.test.ts"
+    "test": "node --test --import tsx tests/**/*.test.ts",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev --name init",
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.0.0",
+    "prisma": "^6.0.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
