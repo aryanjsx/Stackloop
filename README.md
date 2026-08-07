@@ -28,6 +28,7 @@ StackLoop exists to make open source more approachable, more discoverable, and m
 - Contribution opportunities tailored to skill level and experience
 - Repository health and contribution insights for maintainers and contributors
 - A focused experience for discovering meaningful open-source projects
+- GitHub OAuth authentication with PKCE, state validation, refresh-token rotation, and protected session routes
 
 ## Why StackLoop?
 
@@ -119,6 +120,14 @@ cd stackloop
 
 ```bash
 npm install
+npm --prefix apps/api install
+```
+
+### Run the API Auth Module
+
+```bash
+npm --prefix apps/api test
+npm --prefix apps/api build
 ```
 
 ### Start the Application
@@ -156,7 +165,9 @@ OPENAI_API_KEY=your_api_key_here
 .
 ├── apps/
 │   ├── web/                # Next.js frontend
-│   └── api/                # Express.js backend
+│   └── api/                # Express.js backend with auth module
+│       ├── src/auth/       # Controllers, services, middleware, DTOs, validators
+│       └── tests/          # Auth and API unit tests
 ├── services/
 │   └── ai/                 # FastAPI AI service
 ├── db/                     # Database migrations and schema
@@ -165,6 +176,16 @@ OPENAI_API_KEY=your_api_key_here
 ├── .github/                # GitHub workflows and automation
 └── README.md
 ```
+
+### Authentication endpoints
+
+The current API authentication surface includes:
+
+- /auth/github/login
+- /auth/github/callback
+- /auth/logout
+- /auth/refresh
+- /auth/me
 
 ## Development Workflow
 
