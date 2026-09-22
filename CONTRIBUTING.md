@@ -50,40 +50,50 @@ When suggesting a feature, include:
 
 ### Prerequisites
 
-- Node.js 18 or later
-- Python 3.10 or later
-- Docker Desktop
-- PostgreSQL
-- Redis
+- Node.js 20 or later
+- pnpm 10 or later (`npm install -g pnpm`)
+- PostgreSQL 14 or later
+
+Python, Docker, and Redis appear in the architecture documents but are not needed yet; the AI
+service and container configuration have not been built.
 
 ### Clone the Repository
 
 ```bash
 git clone https://github.com/your-org/stackloop.git
 cd stackloop
+pnpm install
 ```
 
-### Install Dependencies
+This is a pnpm workspace. Installing with npm or yarn will not link it correctly.
+
+### Configure and Run
+
+See [Local Installation](README.md#local-installation) in the README for environment setup,
+database migration, and the development server. The short version:
 
 ```bash
-npm install
+cp configs/env/.env.example .env   # then fill in the values
+pnpm --filter @stackloop/api exec prisma migrate deploy
+pnpm --filter @stackloop/api dev
 ```
 
-### Start the Development Environment
+### Before Opening a Pull Request
 
 ```bash
-npm run dev
+pnpm test
+pnpm typecheck
 ```
 
-### Start the AI Service
+## Delivery Phases
 
-```bash
-cd services/ai
-pip install -r requirements.txt
-uvicorn main:app --reload
-```
+StackLoop is built in sequential phases, and work is expected to stay within the phase currently
+open. Before starting, check the [Phase Tracker](docs/phase-tracker.md) to see where the project
+is and what the current phase still needs. If your idea belongs to a later phase, open an issue
+so it can be scheduled rather than merged early.
 
-If you are using Docker, review the repository’s container configuration for a fully containerized local setup.
+New features require a [PRD](docs/prd.md) update first. Architecture changes that depart from the
+specifications in `docs/` require an [ADR](docs/adr/).
 
 ## Development Workflow
 

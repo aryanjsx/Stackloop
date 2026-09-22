@@ -142,17 +142,17 @@ the real HTTP surface rather than hand-written doubles.
 | # | Deliverable | Status |
 |---|---|---|
 | 4.1 | Workspace scaffolding: pnpm + Turborepo root, `tsconfig.base.json`, `.env.example` | COMPLETE |
-| 4.2 | Express server with a single composed entrypoint (`apps/api/src/server.ts`) | NOT STARTED |
+| 4.2 | Express server with a single composed entrypoint (`apps/api/src/server.ts`) | COMPLETE |
 | 4.3 | Real signed JWTs: HS256, verified signature, `exp`, `iss`, `aud` | COMPLETE |
-| 4.4 | Real GitHub OAuth: env-driven credentials, S256 PKCE, code exchange, profile fetch | NOT STARTED |
-| 4.5 | Database-backed OAuth state store with TTL | NOT STARTED |
-| 4.6 | Database-backed sessions with refresh-token hashing, rotation, and reuse detection | NOT STARTED |
-| 4.7 | User upsert on login | NOT STARTED |
-| 4.8 | Working middleware chain: auth, authorization, CSRF, rate limiting | NOT STARTED |
-| 4.9 | Repository collector wired to `PrismaRepositoryRepository` | NOT STARTED |
-| 4.10 | Prisma migration generated and applied | PARTIAL — generated, not yet applied |
-| 4.11 | HTTP-level tests covering auth failure paths, not just happy paths | NOT STARTED |
-| 4.12 | README and docs corrected to match the implementation | NOT STARTED |
+| 4.4 | Real GitHub OAuth: env-driven credentials, S256 PKCE, code exchange, profile fetch | COMPLETE |
+| 4.5 | Database-backed OAuth state store with TTL | COMPLETE |
+| 4.6 | Database-backed sessions with refresh-token hashing, rotation, and reuse detection | COMPLETE |
+| 4.7 | User upsert on login | COMPLETE |
+| 4.8 | Working middleware chain: auth, authorization, CSRF, rate limiting | COMPLETE |
+| 4.9 | Repository collector wired to `PrismaRepositoryRepository` | COMPLETE |
+| 4.10 | Prisma migration generated and applied | **PARTIAL — generated, never applied** |
+| 4.11 | HTTP-level tests covering auth failure paths, not just happy paths | COMPLETE |
+| 4.12 | README and docs corrected to match the implementation | COMPLETE |
 
 Deliverable 4.7 was narrowed from "user upsert and account linking" to "user upsert". The
 `account_links` table in [auth-security-spec.md](./auth-security-spec.md) §15 exists to support
@@ -168,22 +168,21 @@ Recorded from the 2026-09-22 codebase audit. All must be closed before the exit 
 |---|---|---|---|
 | D-01 | Critical | Token format is `base64url(payload) + "." + signingSecret`, leaking `JWT_SIGNING_SECRET` to every client | FIXED (T3) |
 | D-02 | Critical | No signature, `exp`, `iss`, or `aud` verification; `role: "admin"` can be forged by any anonymous caller | FIXED (T3) |
-| D-03 | Critical | `/auth/logout` accepts `session_id` from an unauthenticated request body (IDOR) | OPEN |
-| D-04 | High | OAuth callback never contacts GitHub; the user profile is hardcoded | OPEN |
-| D-05 | High | `loadUser()` returns a hardcoded user for every id | OPEN |
-| D-06 | High | Sessions and OAuth state are in-memory `Map`s; nothing reaches PostgreSQL | OPEN |
-| D-07 | High | Middleware is invoked with a no-op `next()`; auth does not gate `/auth/me` | OPEN |
-| D-08 | High | CSRF middleware is constructed but applied to no route | OPEN |
-| D-09 | Medium | PKCE `code_challenge` is random bytes, not `S256(code_verifier)`; the verifier is never checked | OPEN |
-| D-10 | Medium | `validateSession` resolves by user id, not by the session the token was issued for | OPEN |
-| D-11 | Medium | No refresh-token reuse detection or session-chain revocation | OPEN |
+| D-03 | Critical | `/auth/logout` accepts `session_id` from an unauthenticated request body (IDOR) | FIXED (T10) |
+| D-04 | High | OAuth callback never contacts GitHub; the user profile is hardcoded | FIXED (T7) |
+| D-05 | High | `loadUser()` returns a hardcoded user for every id | FIXED (T8) |
+| D-06 | High | Sessions and OAuth state are in-memory `Map`s; nothing reaches PostgreSQL | FIXED (T5, T6) |
+| D-07 | High | Middleware is invoked with a no-op `next()`; auth does not gate `/auth/me` | FIXED (T9) |
+| D-08 | High | CSRF middleware is constructed but applied to no route | FIXED (T9) |
+| D-09 | Medium | PKCE `code_challenge` is random bytes, not `S256(code_verifier)`; the verifier is never checked | FIXED (T5) |
+| D-10 | Medium | `validateSession` resolves by user id, not by the session the token was issued for | FIXED (T6) |
+| D-11 | Medium | No refresh-token reuse detection or session-chain revocation | FIXED (T6) |
 | D-12 | Medium | `client_id` is the hardcoded string `'github-client-id'` | FIXED (T2) |
-| D-13 | Medium | OAuth state store has no TTL | OPEN |
+| D-13 | Medium | OAuth state store has no TTL | FIXED (T5) |
 | D-14 | Low | Prisma `Session` stores `*_Encrypted` columns while the spec and code use hashes | FIXED (T4) |
-| D-15 | Low | README documents `/repositories/sync/batch`; the code registers `/repositories/batch-sync` | OPEN |
+| D-15 | Low | README documents `/repositories/sync/batch`; the code registers `/repositories/batch-sync` | FIXED (T11) |
 
-Until every entry above is FIXED, the legacy auth module in `src/auth/` must be treated as
-non-functional and must not be deployed or exposed.
+All fifteen defects are closed, each with a regression test naming the defect it guards.
 
 ### Deferred beyond Phase 4
 
@@ -194,11 +193,28 @@ non-functional and must not be deployed or exposed.
 
 ### Blockers
 
-- **No PostgreSQL available on the development machine.** Neither a local PostgreSQL install nor
-  Docker is present. The initial migration was generated offline with `prisma migrate diff`, but
-  it has not been applied, and the database-backed session, OAuth state, and user services
-  (deliverables 4.5–4.7, 4.9) cannot be verified against a real database until this is resolved.
-  Phase 4's exit criterion explicitly requires "real, not mock", so this blocks phase closure.
+- **No PostgreSQL available on the development machine.** Neither a local install nor Docker is
+  present, and an attempt to install PostgreSQL 17 via winget was not completed. The initial
+  migration was generated offline with `prisma migrate diff` and has never been applied.
+
+  **This is the single remaining item standing between Phase 4 and its exit criterion.** Phase 4
+  requires "core backend services functional (real, not mock)". The production code paths are
+  real — `PrismaOAuthStateRepository`, `PrismaSessionRepository`,
+  `PrismaRefreshTokenRepository`, `PrismaAuthUserRepository`, and `PrismaRepositoryRepository`
+  are what `server.ts` wires — but the automated tests exercise them through in-memory doubles
+  that implement the same ports. So the *behaviour* is verified while the *SQL* is not.
+
+  Specifically unverified until a database exists:
+  - the migration applies cleanly;
+  - `updateManyAndReturn` gives single-use OAuth state semantics on PostgreSQL;
+  - the conditional `usedAt` update detects refresh-token reuse under real concurrency;
+  - `upsert` on `githubId` behaves as expected across the BigInt boundary.
+
+  **Phase 4 is therefore NOT complete and Phase 5 must not begin.**
+
+  To close it: install PostgreSQL, set `DATABASE_URL`, run
+  `pnpm --filter @stackloop/api exec prisma migrate deploy`, then add an integration test suite
+  that runs the same scenarios against the real database.
 
 ### Resolved blockers
 

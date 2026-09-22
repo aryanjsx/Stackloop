@@ -106,127 +106,174 @@ StackLoop is currently under active development. The following instructions are 
 
 ### Prerequisites
 
-- Node.js 18 or later
-- Python 3.10 or later
-- Docker Desktop
-- PostgreSQL
-- Redis
+- Node.js 20 or later
+- pnpm 10 or later (`npm install -g pnpm`)
+- PostgreSQL 14 or later
 
-### Clone the Repository
+Python, Docker, and Redis are listed in the architecture documents but are not yet needed:
+the AI service and container configuration have not been built.
+
+### Clone and install
 
 ```bash
 git clone https://github.com/your-org/stackloop.git
 cd stackloop
+pnpm install
 ```
 
-### Install Dependencies
+This repository uses pnpm workspaces. Installing with npm or yarn will not link the workspace
+correctly.
+
+### Configure the environment
 
 ```bash
-npm install
-npm --prefix apps/api install
+cp configs/env/.env.example .env
 ```
 
-### Run the API Module
+Then fill in the required values. Every variable is documented inline in that file.
+
+To obtain the GitHub credentials, register an OAuth application at
+**GitHub → Settings → Developer settings → OAuth Apps**. Set the authorization callback URL to
+exactly the value you use for `GITHUB_REDIRECT_URI`.
+
+Generate a signing secret:
 
 ```bash
-npm --prefix apps/api install
-npm --prefix apps/api test
-npm --prefix apps/api run build
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-If you plan to connect to a PostgreSQL database locally, initialize Prisma and run migrations:
+The API validates its configuration on startup and exits with a list of every problem if
+anything is missing or unsafe, rather than starting with insecure defaults.
+
+### Set up the database
 
 ```bash
+createdb stackloop
+
 cd apps/api
-npx prisma generate --schema prisma/schema.prisma
-npx prisma migrate dev --name init
+pnpm exec prisma migrate deploy   # apply the checked-in migration
+pnpm exec prisma generate         # generate the typed client
 ```
 
-### Start the Application
+Use `pnpm exec prisma migrate dev` instead when you are changing the schema and want a new
+migration generated.
+
+### Run the API
 
 ```bash
-npm run dev
+pnpm --filter @stackloop/api dev
 ```
 
-### Start the AI Service
+The API listens on `PORT` (default 3001). Check it is up:
 
 ```bash
-cd services/ai
-pip install -r requirements.txt
-uvicorn main:app --reload
+curl http://localhost:3001/health
+```
+
+### Run the checks
+
+```bash
+pnpm test        # all workspace tests
+pnpm typecheck   # TypeScript, no emit
+pnpm build       # compile
 ```
 
 ## Environment Variables
 
-Create a local environment file for the application and configure the required values before running the stack.
+The single source of truth is [`configs/env/.env.example`](configs/env/.env.example), which
+documents each variable inline. Summary:
 
-Example:
+| Variable | Required | Default | Purpose |
+|---|---|---|---|
+| `NODE_ENV` | no | `development` | `development`, `test`, or `production` |
+| `PORT` | no | `3001` | Port the API listens on |
+| `WEB_APP_ORIGIN` | no | `http://localhost:3000` | Origin of the web app |
+| `DATABASE_URL` | **yes** | — | PostgreSQL connection string |
+| `GITHUB_CLIENT_ID` | **yes** | — | OAuth app client id |
+| `GITHUB_CLIENT_SECRET` | **yes** | — | OAuth app client secret |
+| `GITHUB_REDIRECT_URI` | **yes** | — | Must match the callback URL registered with GitHub |
+| `GITHUB_TOKEN` | no | — | PAT for repository ingestion; raises the rate limit to 5000/hour |
+| `GITHUB_API_BASE_URL` | no | `https://api.github.com` | GitHub REST base URL |
+| `JWT_SIGNING_SECRET` | **yes** | — | HS256 secret, minimum 32 characters |
+| `JWT_ISSUER` | no | `stackloop` | Token `iss` claim, validated on every request |
+| `JWT_AUDIENCE` | no | `stackloop-api` | Token `aud` claim, validated on every request |
+| `ACCESS_TOKEN_TTL_SECONDS` | no | `900` | Access token lifetime |
+| `REFRESH_TOKEN_TTL_SECONDS` | no | `2592000` | Refresh token lifetime |
+| `OAUTH_STATE_TTL_SECONDS` | no | `600` | How long an unfinished login stays valid |
 
-```env
-PORT=3000
-DATABASE_URL=postgresql://user:password@localhost:5432/stackloop
-REDIS_URL=redis://localhost:6379
-GITHUB_CLIENT_ID=your_github_client_id
-GITHUB_CLIENT_SECRET=your_github_client_secret
-GITHUB_REDIRECT_URI=http://localhost:3000/auth/github/callback
-OPENAI_API_KEY=your_api_key_here
-```
+In production the API additionally refuses to start if `JWT_SIGNING_SECRET` is a known
+placeholder, or if `GITHUB_REDIRECT_URI` or `WEB_APP_ORIGIN` use plain `http`.
 
-> Note: The exact environment variable names may evolve as the project matures. Please review the repository configuration files for the latest requirements.
+`REDIS_URL` and `OPENAI_API_KEY` appeared in earlier versions of this file but are not read by
+any code yet. They will return with Phase 10 and Phase 5 respectively.
 
 ## Project Structure
+
+This is what the repository contains today. The larger target layout, including `apps/web`,
+`packages/*`, `services/ai`, and `infra/`, is described in the
+[monorepo architecture spec](docs/monorepo-architecture.md).
 
 ```text
 .
 ├── apps/
-│   ├── web/                # Next.js frontend
-│   └── api/                # TypeScript API package with auth and repository modules
-│       ├── prisma/         # Prisma schema and seed data
-│       ├── src/auth/       # Controllers, services, middleware, DTOs, validators
-│       ├── src/repositories/ # GitHub repository collector and enrichment services
-│       ├── src/database/   # Prisma client and repository abstractions
-│       └── tests/          # Auth, collector, and repository unit tests
-├── services/
-│   └── ai/                 # FastAPI AI service
-├── docs/                   # Project documentation
-├── docker/                 # Docker configuration
-├── .github/                # GitHub workflows and automation
-└── README.md
+│   └── api/                        # Express API (TypeScript, ESM)
+│       ├── prisma/
+│       │   ├── schema.prisma       # 23 models
+│       │   └── migrations/         # Checked-in SQL migrations
+│       ├── src/
+│       │   ├── auth/               # OAuth, tokens, sessions, middleware
+│       │   ├── config/             # Validated environment configuration
+│       │   ├── database/           # Prisma client and repository abstractions
+│       │   ├── middleware/         # Error handling
+│       │   ├── repositories/       # GitHub ingestion
+│       │   ├── app.ts              # Application composition
+│       │   └── server.ts           # Process entrypoint
+│       └── tests/
+├── configs/env/                    # Environment templates
+├── docs/                           # Product, architecture, and delivery documents
+├── .github/                        # Issue and PR templates, CODEOWNERS
+├── pnpm-workspace.yaml
+└── turbo.json
 ```
 
 ### Current API surface
 
-The current API surface includes:
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| `GET` | `/health` | none | Liveness check |
+| `GET` | `/auth/github/login` | none | Begin GitHub OAuth |
+| `GET` | `/auth/github/callback` | none | Complete OAuth, create session |
+| `POST` | `/auth/refresh` | refresh token | Rotate tokens |
+| `POST` | `/auth/logout` | required | Revoke the caller's session |
+| `GET` | `/auth/me` | required | Current user |
+| `POST` | `/repositories/sync` | admin | Ingest one repository |
+| `POST` | `/repositories/sync/batch` | admin | Ingest up to 50 repositories |
 
-- /auth/github/login
-- /auth/github/callback
-- /auth/logout
-- /auth/refresh
-- /auth/me
-- /repositories/sync
-- /repositories/sync/batch
+Full request and response shapes, error codes, cookie flags, and rate limits are documented in
+the [Authentication Endpoints reference](docs/api-auth-endpoints.md).
 
 ### Current implementation status
 
-StackLoop is in **Phase 4 (Core Backend Development)**. See the
-[Phase Tracker](docs/phase-tracker.md) for the authoritative status of every deliverable.
+StackLoop is in **Phase 4 (Core Backend Development)**. The
+[Phase Tracker](docs/phase-tracker.md) is the authoritative status of every deliverable.
 
-Implemented:
+Implemented and tested:
 
-- Prisma schema covering users, sessions, repositories, collections, recommendations, and activity
-- A real GitHub API client for repository, README, topic, language, and contributor metadata
+- GitHub OAuth with server-side, single-use, expiring authorization state and S256 PKCE
+- HS256 access and refresh tokens with verified signatures and enforced `exp`, `iss`, and `aud`
+- PostgreSQL-backed sessions and refresh tokens, with rotation on every use and session
+  revocation when a spent token is replayed
+- Authentication, role-based authorization, CSRF, and rate-limiting middleware on the routes
+- Repository ingestion from the GitHub API, persisted through Prisma
+- Prisma schema and a checked-in initial migration
 
-In progress, and **not yet usable**:
+Still outstanding in this phase:
 
-- GitHub OAuth. The flow does not yet contact GitHub, sessions are held in memory rather than
-  PostgreSQL, and the token layer does not perform real signature verification. Do not deploy
-  this or treat it as a security boundary.
-- Repository ingestion currently writes to an in-memory store rather than PostgreSQL.
-- There is no server entrypoint yet, so the API cannot be started.
+- The migration has not been applied to a live PostgreSQL instance, so the database-backed paths
+  are verified by their contracts and tests rather than against a running database.
+- The summary and search-index job queues are stubs; they report `queued: false`.
 
-Not yet started: the web frontend (`apps/web`), the AI service (`services/ai`), container
-configuration, and CI workflows. The project structure below reflects the target layout from
-the [monorepo architecture spec](docs/monorepo-architecture.md), not the current tree.
+Not started: the web frontend, the AI service, Redis, container configuration, and CI workflows.
 
 ## Development Workflow
 
@@ -298,6 +345,7 @@ Documentation is an essential part of the StackLoop project. As the platform evo
 - [UX Flow Specification](docs/ux-user-flows.md)
 - [Low-Fidelity Wireframe Specification](docs/wireframes-low-fidelity.md)
 - [UI and Design System Specification](docs/design-system-ui-spec.md)
+- [Authentication Endpoints Reference](docs/api-auth-endpoints.md)
 - [Monorepo Architecture Specification](docs/monorepo-architecture.md)
 - [System Architecture Specification](docs/system-architecture.md)
 - [Database Schema Specification](docs/database-schema.md)
