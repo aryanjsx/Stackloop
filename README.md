@@ -64,6 +64,7 @@ A live demo will be available soon. In the meantime, the project is being develo
 ### Backend
 - Node.js
 - TypeScript
+- Express.js
 - Prisma ORM
 
 ### AI Layer
@@ -277,43 +278,77 @@ Not started: the web frontend, the AI service, Redis, container configuration, a
 
 ## Development Workflow
 
-1. Create a feature branch from main.
-2. Make focused changes with clear intent.
-3. Write or update tests where applicable.
-4. Run linting and relevant checks locally.
-5. Open a pull request with a clear summary and validation details.
-
-Example:
+1. Check the [Phase Tracker](docs/phase-tracker.md) to confirm your change belongs to the phase
+   that is currently open.
+2. Create a feature branch from main.
+3. Make focused changes with clear intent.
+4. Write or update tests, including the failure paths and not only the happy path.
+5. Run the checks locally.
+6. Open a pull request with a clear summary and the evidence you used to verify it.
 
 ```bash
 git checkout -b feature/your-feature
+
+pnpm test
+pnpm typecheck
+
 git commit -m "feat: add repository insight summary"
 git push origin feature/your-feature
 ```
 
+No linter is configured yet, so `pnpm lint` currently does nothing. Adding one is a Phase 9
+(Quality Assurance) deliverable.
+
+Full guidance, including branch naming and commit conventions, is in
+[CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Roadmap
 
-StackLoop is planned to evolve through the following stages:
+StackLoop is delivered in sixteen sequential phases. A phase begins only once the previous
+phase's exit criterion has been met and recorded in the
+[Phase Tracker](docs/phase-tracker.md), which is the authoritative status of every deliverable.
 
-- Phase 1: Repository discovery and AI summaries
-- Phase 2: Personalized recommendations and learning pathways
-- Phase 3: Contribution opportunity matching and onboarding flows
-- Phase 4: Community engagement and maintainer insights
-- Phase 5: Expanded integrations and richer intelligence
+| Phase | Name | Exit criterion | Status |
+|---|---|---|---|
+| 0 | Foundation & Product Strategy | Vision and MVP scope locked, architecture approved | Complete |
+| 1 | Brand & Repository Setup | Repo public, professional, contributor-ready | Complete |
+| 2 | UI/UX Design | All major screens approved | Complete |
+| 3 | Technical Architecture | Architecture finalized, implementation-ready | Complete |
+| 4 | Core Backend Development | Core backend services functional (real, not mock) | **In progress** |
+| 5 | AI & Discovery Engine | Repos receive AI-generated insights | Not started |
+| 6 | Frontend Development | Frontend fully integrates with backend APIs | Not started |
+| 7 | Personalization | Users receive customized content | Not started |
+| 8 | Open Source Features | Maintainers manage projects, contributors participate | Not started |
+| 9 | Quality Assurance | No critical defects, quality gates pass | Not started |
+| 10 | DevOps & Deployment | Production deployment stable | Not started |
+| 11 | Documentation | A new dev can set up and contribute from docs alone | Not started |
+| 12 | Beta Launch | Stable beta with validated feedback | Not started |
+| 13 | Public Launch | Public launch completed | Not started |
+| 14 | Community Growth | Consistent engagement and external contributions | Not started |
+| 15 | Growth & Scale | Matured beyond MVP into a real ecosystem | Not started |
+
+The product capabilities this roadmap delivers — summaries, difficulty ratings, recommendations,
+learning paths, and contribution matching — are scoped in the
+[Product Requirements Document](docs/prd.md), which also records what is deliberately **out** of
+MVP scope.
 
 ## Contributing
 
 Contributions are welcome. Whether you are fixing a bug, improving documentation, or proposing a new idea, we appreciate thoughtful and well-scoped contributions.
 
-Before contributing, please review the project guidelines and open an issue for discussion when appropriate.
+Start with [CONTRIBUTING.md](CONTRIBUTING.md) for setup, branch naming, commit conventions, and
+the review process, and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community expectations.
 
-### Contribution Guidelines
+Two things specific to this project are worth knowing before you start:
 
-- Follow the existing code style and project conventions
-- Keep changes focused and well documented
-- Write clear commit messages
-- Include tests where practical
-- Be respectful and constructive in discussions
+- **Work stays within the open phase.** Check the [Phase Tracker](docs/phase-tracker.md) first.
+  If your idea belongs to a later phase, open an issue so it can be scheduled rather than merged
+  early.
+- **New features need a [PRD](docs/prd.md) update first**, and architecture changes that depart
+  from the specifications in `docs/` need an [ADR](docs/adr/).
+
+Good first issues are labelled `good first issue`. To report a security vulnerability, follow
+[SECURITY.md](SECURITY.md) rather than opening a public issue.
 
 ## Community
 
