@@ -1,21 +1,35 @@
 {
   "name": "@stackloop/api",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "node --env-file-if-exists=../../.env --watch --import tsx src/server.ts",
+    "start": "node dist/server.js",
     "build": "tsc -p tsconfig.json",
-    "test": "node --test --import tsx tests/**/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --env-file-if-exists=../../.env.test --test --import tsx \"tests/**/*.test.ts\"",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev --name init",
-    "seed": "tsx prisma/seed.ts"
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
+    "seed": "node --env-file-if-exists=../../.env --import tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",
-    "prisma": "^6.0.0"
+    "cookie-parser": "^1.4.7",
+    "express": "^5.1.0",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "jose": "^6.0.0",
+    "zod": "^4.0.0"
   },
   "devDependencies": {
+    "@types/cookie-parser": "^1.4.8",
+    "@types/express": "^5.0.0",
     "@types/node": "^24.0.0",
+    "@types/supertest": "^6.0.2",
+    "prisma": "^6.0.0",
+    "supertest": "^7.0.0",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0"
   }
