@@ -8,7 +8,7 @@
     "start": "node dist/server.js",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --env-file-if-exists=../../.env.test --test --import tsx \"tests/**/*.test.ts\"",
+    "test": "node --test --import tsx \"tests/**/*.test.ts\"",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",

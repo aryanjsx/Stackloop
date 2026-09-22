@@ -139,6 +139,15 @@ export function createTestHarness(
   };
 }
 
+/** Reads the Location header of a redirect, failing loudly if the response was not one. */
+export function redirectLocation(response: { headers: Record<string, unknown> }): URL {
+  const location = response.headers['location'];
+  if (typeof location !== 'string') {
+    throw new Error('Expected the response to carry a Location header');
+  }
+  return new URL(location);
+}
+
 /** Extracts a cookie value from a set-cookie header list. */
 export function readCookie(setCookie: string[] | undefined, name: string): string | null {
   if (!setCookie) {

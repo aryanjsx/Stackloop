@@ -6,6 +6,7 @@ import {
   cookieAttributes,
   createTestHarness,
   readCookie,
+  redirectLocation,
   type TestHarness,
 } from './helpers/test-app.js';
 
@@ -16,7 +17,7 @@ async function login(harness: TestHarness, returnTo?: string) {
     .query(returnTo ? { return_to: returnTo } : {});
 
   assert.equal(loginResponse.status, 302);
-  const state = new URL(loginResponse.headers.location).searchParams.get('state');
+  const state = redirectLocation(loginResponse).searchParams.get('state');
   assert.ok(state);
 
   const callback = await request(harness.app)
@@ -57,7 +58,7 @@ test('login redirects to GitHub with a real S256 challenge derived from the stor
   const response = await request(harness.app).get('/auth/github/login');
 
   assert.equal(response.status, 302);
-  const location = new URL(response.headers.location);
+  const location = redirectLocation(response);
   assert.equal(location.origin + location.pathname, 'https://github.com/login/oauth/authorize');
   assert.equal(location.searchParams.get('code_challenge_method'), 'S256');
 
@@ -102,8 +103,8 @@ test('each login issues a distinct state and verifier', async () => {
   const first = await request(harness.app).get('/auth/github/login');
   const second = await request(harness.app).get('/auth/github/login');
 
-  const firstState = new URL(first.headers.location).searchParams.get('state');
-  const secondState = new URL(second.headers.location).searchParams.get('state');
+  const firstState = redirectLocation(first).searchParams.get('state');
+  const secondState = redirectLocation(second).searchParams.get('state');
 
   assert.notEqual(firstState, secondState);
 });
@@ -132,7 +133,7 @@ test('callback exchanges the code with GitHub and creates a real user and sessio
 test('callback presents the stored verifier, not a fresh one', async () => {
   const harness = createTestHarness();
   const loginResponse = await request(harness.app).get('/auth/github/login');
-  const location = new URL(loginResponse.headers.location);
+  const location = redirectLocation(loginResponse);
   const state = location.searchParams.get('state')!;
   const challenge = location.searchParams.get('code_challenge')!;
 
@@ -156,7 +157,7 @@ test('callback rejects an unknown state without contacting GitHub', async () => 
 test('callback rejects a replayed state', async () => {
   const harness = createTestHarness();
   const loginResponse = await request(harness.app).get('/auth/github/login');
-  const state = new URL(loginResponse.headers.location).searchParams.get('state')!;
+  const state = redirectLocation(loginResponse).searchParams.get('state')!;
 
   const first = await request(harness.app)
     .get('/auth/github/callback')
@@ -176,7 +177,7 @@ test('callback rejects an expired state', async () => {
   // Regression test for D-13: the state store previously had no TTL at all.
   const harness = createTestHarness({ oauthStateTtlSeconds: 60 });
   const loginResponse = await request(harness.app).get('/auth/github/login');
-  const state = new URL(loginResponse.headers.location).searchParams.get('state')!;
+  const state = redirectLocation(loginResponse).searchParams.get('state')!;
 
   harness.advanceSeconds(120);
 
@@ -205,7 +206,7 @@ test('callback surfaces a provider failure as 502, not 500', async () => {
   harness.github.failExchange = true;
 
   const loginResponse = await request(harness.app).get('/auth/github/login');
-  const state = new URL(loginResponse.headers.location).searchParams.get('state')!;
+  const state = redirectLocation(loginResponse).searchParams.get('state')!;
 
   const response = await request(harness.app)
     .get('/auth/github/callback')

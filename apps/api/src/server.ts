@@ -8,6 +8,10 @@ import { PrismaOAuthStateRepository } from './auth/repositories/prisma-oauth-sta
 import { PrismaRefreshTokenRepository } from './auth/repositories/prisma-refresh-token.repository.js';
 import { PrismaSessionRepository } from './auth/repositories/prisma-session.repository.js';
 import { TokenService } from './auth/tokens/token.service.js';
+import { RepositoryController } from './repositories/controllers/repository.controller.js';
+import { RepositoryCollectorService } from './repositories/services/repository-collector.service.js';
+import { GitHubService } from './repositories/services/github.service.js';
+import { PrismaRepositoryRepository } from './repositories/repositories/prisma-repository.repository.js';
 
 /**
  * Process entrypoint. Composes the real, database-backed implementations and starts listening.
@@ -47,8 +51,25 @@ async function main(): Promise<void> {
     refreshTokenTtlSeconds: config.auth.refreshTokenTtlSeconds,
   });
 
+  const collectorService = new RepositoryCollectorService({
+    githubService: new GitHubService({
+      baseUrl: config.github.apiBaseUrl,
+      token: config.github.token ?? '',
+      rateLimitBuffer: 5,
+    }),
+    // Ingested repositories now land in PostgreSQL rather than an in-memory Map.
+    repositoryRepository: new PrismaRepositoryRepository(prisma),
+    queueProducer: {
+      // Still a stub. Real queueing is Phase 5 (AI & Discovery Engine); recorded in the
+      // phase tracker so it is not mistaken for finished work.
+      enqueueSummaryJob: async (payload) => ({ id: payload.repositoryId, queued: false }),
+      enqueueSearchIndexJob: async (payload) => ({ id: payload.repositoryId, queued: false }),
+    },
+  });
+
   const app = createApp({
     authService,
+    repositoryController: new RepositoryController(collectorService),
     isProduction: config.isProduction,
     webAppOrigin: config.webAppOrigin,
     accessTokenTtlSeconds: config.auth.accessTokenTtlSeconds,

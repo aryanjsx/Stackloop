@@ -5,9 +5,13 @@ import { AuthController } from './auth/controllers/auth.controller.js';
 import { createAuthRouter } from './auth/routes.js';
 import type { AuthService } from './auth/services/auth.service.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
+import { createRepositoryRouter } from './repositories/routes.js';
+import type { RepositoryController } from './repositories/controllers/repository.controller.js';
 
 export interface CreateAppOptions {
   authService: AuthService;
+  /** Omitted in tests that only exercise authentication. */
+  repositoryController?: RepositoryController;
   isProduction: boolean;
   webAppOrigin: string;
   accessTokenTtlSeconds: number;
@@ -60,6 +64,16 @@ export function createApp(options: CreateAppOptions): Express {
       enableRateLimiting: options.enableRateLimiting ?? true,
     }),
   );
+
+  if (options.repositoryController) {
+    app.use(
+      '/repositories',
+      createRepositoryRouter({
+        authService: options.authService,
+        controller: options.repositoryController,
+      }),
+    );
+  }
 
   app.use(notFoundHandler);
   app.use(errorHandler({ isProduction: options.isProduction }));
