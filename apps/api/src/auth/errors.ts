@@ -17,6 +17,12 @@ export class InvalidRefreshTokenError extends AuthError {
   }
 }
 
+export class InvalidTokenError extends AuthError {
+  constructor(message = 'Invalid or expired token') {
+    super(message, 401, 'INVALID_TOKEN');
+  }
+}
+
 export class UnauthorizedError extends AuthError {
   constructor(message = 'Unauthorized') {
     super(message, 401, 'UNAUTHORIZED');
