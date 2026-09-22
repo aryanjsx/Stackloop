@@ -184,6 +184,26 @@ Recorded from the 2026-09-22 codebase audit. All must be closed before the exit 
 
 All fifteen defects are closed, each with a regression test naming the defect it guards.
 
+### Accepted risks
+
+**AR-01 — Concurrent refresh revokes the session (accepted 2026-09-22).**
+
+Refresh-token rotation is strict: the first request to present a token rotates it, and any later
+presentation of that same token is treated as replay, which revokes the whole session.
+
+Two browser tabs refreshing at the same moment, or a client that retries after a network
+timeout, therefore sign the user out everywhere. Reproduced by issuing two simultaneous
+`POST /auth/refresh` calls with the same token: one returns 200, the other returns
+`401 REFRESH_TOKEN_REUSE`, and the session is revoked.
+
+This is the behaviour [auth-security-spec.md](./auth-security-spec.md) §7 asks for ("If a refresh
+token is reused, revoke the entire session chain and force re-login"), and it is being kept
+deliberately rather than weakened. The usual mitigation is a short grace window in which the
+immediately preceding token returns the already-issued successor pair instead of revoking.
+
+Accepted for now. Expect user reports of unexplained sign-outs once the frontend ships in
+Phase 6; revisit then, and do **not** resolve it by disabling reuse detection.
+
 ### Deferred beyond Phase 4
 
 - **Redis.** [system-architecture.md](./system-architecture.md) includes Redis for caching and
