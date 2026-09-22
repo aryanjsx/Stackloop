@@ -141,44 +141,68 @@ the real HTTP surface rather than hand-written doubles.
 
 | # | Deliverable | Status |
 |---|---|---|
-| 4.1 | Workspace scaffolding: pnpm + Turborepo root, `tsconfig.base.json`, `.env.example` | NOT STARTED |
+| 4.1 | Workspace scaffolding: pnpm + Turborepo root, `tsconfig.base.json`, `.env.example` | COMPLETE |
 | 4.2 | Express server with a single composed entrypoint (`apps/api/src/server.ts`) | NOT STARTED |
-| 4.3 | Real signed JWTs: HS256, verified signature, `exp`, `iss`, `aud` | NOT STARTED |
+| 4.3 | Real signed JWTs: HS256, verified signature, `exp`, `iss`, `aud` | COMPLETE |
 | 4.4 | Real GitHub OAuth: env-driven credentials, S256 PKCE, code exchange, profile fetch | NOT STARTED |
 | 4.5 | Database-backed OAuth state store with TTL | NOT STARTED |
 | 4.6 | Database-backed sessions with refresh-token hashing, rotation, and reuse detection | NOT STARTED |
-| 4.7 | User upsert and account linking on login | NOT STARTED |
+| 4.7 | User upsert on login | NOT STARTED |
 | 4.8 | Working middleware chain: auth, authorization, CSRF, rate limiting | NOT STARTED |
 | 4.9 | Repository collector wired to `PrismaRepositoryRepository` | NOT STARTED |
-| 4.10 | Prisma migration generated and applied | NOT STARTED |
+| 4.10 | Prisma migration generated and applied | PARTIAL — generated, not yet applied |
 | 4.11 | HTTP-level tests covering auth failure paths, not just happy paths | NOT STARTED |
 | 4.12 | README and docs corrected to match the implementation | NOT STARTED |
+
+Deliverable 4.7 was narrowed from "user upsert and account linking" to "user upsert". The
+`account_links` table in [auth-security-spec.md](./auth-security-spec.md) §15 exists to support
+multiple identity providers, and the [PRD](./prd.md) §5 puts non-GitHub providers out of MVP
+scope. The unique `github_id` on `users` is sufficient while GitHub is the only provider.
+Revisit when a second provider is added.
 
 ### Known defects carried into this phase
 
 Recorded from the 2026-09-22 codebase audit. All must be closed before the exit criterion is met.
 
-| ID | Severity | Defect |
-|---|---|---|
-| D-01 | Critical | Token format is `base64url(payload) + "." + signingSecret`, leaking `JWT_SIGNING_SECRET` to every client |
-| D-02 | Critical | No signature, `exp`, `iss`, or `aud` verification; `role: "admin"` can be forged by any anonymous caller |
-| D-03 | Critical | `/auth/logout` accepts `session_id` from an unauthenticated request body (IDOR) |
-| D-04 | High | OAuth callback never contacts GitHub; the user profile is hardcoded |
-| D-05 | High | `loadUser()` returns a hardcoded user for every id |
-| D-06 | High | Sessions and OAuth state are in-memory `Map`s; nothing reaches PostgreSQL |
-| D-07 | High | Middleware is invoked with a no-op `next()`; auth does not gate `/auth/me` |
-| D-08 | High | CSRF middleware is constructed but applied to no route |
-| D-09 | Medium | PKCE `code_challenge` is random bytes, not `S256(code_verifier)`; the verifier is never checked |
-| D-10 | Medium | `validateSession` resolves by user id, not by the session the token was issued for |
-| D-11 | Medium | No refresh-token reuse detection or session-chain revocation |
-| D-12 | Medium | `client_id` is the hardcoded string `'github-client-id'` |
-| D-13 | Medium | OAuth state store has no TTL |
-| D-14 | Low | Prisma `Session` stores `*_Encrypted` columns while the spec and code use hashes |
-| D-15 | Low | README documents `/repositories/sync/batch`; the code registers `/repositories/batch-sync` |
+| ID | Severity | Defect | Status |
+|---|---|---|---|
+| D-01 | Critical | Token format is `base64url(payload) + "." + signingSecret`, leaking `JWT_SIGNING_SECRET` to every client | FIXED (T3) |
+| D-02 | Critical | No signature, `exp`, `iss`, or `aud` verification; `role: "admin"` can be forged by any anonymous caller | FIXED (T3) |
+| D-03 | Critical | `/auth/logout` accepts `session_id` from an unauthenticated request body (IDOR) | OPEN |
+| D-04 | High | OAuth callback never contacts GitHub; the user profile is hardcoded | OPEN |
+| D-05 | High | `loadUser()` returns a hardcoded user for every id | OPEN |
+| D-06 | High | Sessions and OAuth state are in-memory `Map`s; nothing reaches PostgreSQL | OPEN |
+| D-07 | High | Middleware is invoked with a no-op `next()`; auth does not gate `/auth/me` | OPEN |
+| D-08 | High | CSRF middleware is constructed but applied to no route | OPEN |
+| D-09 | Medium | PKCE `code_challenge` is random bytes, not `S256(code_verifier)`; the verifier is never checked | OPEN |
+| D-10 | Medium | `validateSession` resolves by user id, not by the session the token was issued for | OPEN |
+| D-11 | Medium | No refresh-token reuse detection or session-chain revocation | OPEN |
+| D-12 | Medium | `client_id` is the hardcoded string `'github-client-id'` | FIXED (T2) |
+| D-13 | Medium | OAuth state store has no TTL | OPEN |
+| D-14 | Low | Prisma `Session` stores `*_Encrypted` columns while the spec and code use hashes | FIXED (T4) |
+| D-15 | Low | README documents `/repositories/sync/batch`; the code registers `/repositories/batch-sync` | OPEN |
+
+Until every entry above is FIXED, the legacy auth module in `src/auth/` must be treated as
+non-functional and must not be deployed or exposed.
+
+### Deferred beyond Phase 4
+
+- **Redis.** [system-architecture.md](./system-architecture.md) includes Redis for caching and
+  fast session lookup. Sessions are durable in PostgreSQL, which
+  [auth-security-spec.md](./auth-security-spec.md) §5 permits, and caching is a performance
+  concern rather than a functional one. Scheduled for Phase 10.
 
 ### Blockers
 
-None currently. (Resolved 2026-09-22: Node.js was absent from the development machine; Node 24.19.0 LTS installed.)
+- **No PostgreSQL available on the development machine.** Neither a local PostgreSQL install nor
+  Docker is present. The initial migration was generated offline with `prisma migrate diff`, but
+  it has not been applied, and the database-backed session, OAuth state, and user services
+  (deliverables 4.5–4.7, 4.9) cannot be verified against a real database until this is resolved.
+  Phase 4's exit criterion explicitly requires "real, not mock", so this blocks phase closure.
+
+### Resolved blockers
+
+- Node.js was absent from the development machine. Node 24.19.0 LTS and pnpm 12.5.1 installed 2026-09-22.
 
 ---
 
