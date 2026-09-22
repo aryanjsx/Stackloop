@@ -98,7 +98,9 @@ model RefreshToken {
 model OAuthState {
   id            String    @id @default(uuid())
   state         String    @unique
-  codeChallenge String    @map("code_challenge")
+  /// The PKCE verifier, held server-side. Only its S256 challenge is sent to the provider, and
+  /// the verifier is presented at token exchange to prove this is the same login attempt.
+  codeVerifier  String    @map("code_verifier")
   redirectUri   String    @map("redirect_uri")
   returnTo      String?   @map("return_to")
   expiresAt     DateTime  @map("expires_at")

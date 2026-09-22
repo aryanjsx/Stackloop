@@ -1,103 +1,156 @@
-import { IncomingMessage, ServerResponse } from 'node:http';
-import { URL } from 'node:url';
-import { AuthService } from '../services/auth.service.js';
-import { AuthError } from '../errors.js';
-import { GithubCallbackDto, GithubLoginDto, RefreshTokenDto } from '../dto.js';
+import { randomBytes } from 'node:crypto';
+import type { NextFunction, Request, Response } from 'express';
+import { UnauthorizedError } from '../errors.js';
+import {
+  REFRESH_TOKEN_COOKIE,
+  clearAuthCookies,
+  setAuthCookies,
+  setCsrfCookie,
+  type CookieConfig,
+} from '../cookies.js';
+import {
+  githubCallbackSchema,
+  githubLoginSchema,
+  parseOrThrow,
+  refreshSchema,
+} from '../validators/auth.validator.js';
+import type { AuthService } from '../services/auth.service.js';
+import type { AuthUser, AuthTokens } from '../types.js';
+
+export interface AuthControllerConfig extends CookieConfig {
+  webAppOrigin: string;
+}
 
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly config: AuthControllerConfig,
+  ) {}
 
-  async handleGithubLogin(req: IncomingMessage, res: ServerResponse): Promise<void> {
-    const url = new URL(req.url ?? '/', 'https://api.stackloop.dev');
-    const payload: GithubLoginDto = {
-      redirectUri: url.searchParams.get('redirect_uri') ?? undefined,
-      state: url.searchParams.get('state') ?? undefined,
-    };
-
-    const result = await this.authService.initiateGithubLogin(payload);
-    res.writeHead(302, { Location: result.redirectUrl });
-    res.end();
-  }
-
-  async handleGithubCallback(req: IncomingMessage, res: ServerResponse): Promise<void> {
-    const body = await this.readJson(req);
-    const payload: GithubCallbackDto & { providerUser: any } = {
-      code: body?.code,
-      state: body?.state,
-      codeVerifier: body?.code_verifier,
-      providerUser: {
-        id: 42,
-        login: 'octocat',
-        name: 'The Octocat',
-        email: 'octocat@github.com',
-        avatarUrl: 'https://avatars.githubusercontent.com/u/42',
-      },
-    };
-
+  /** GET /auth/github/login — redirects the browser to GitHub's consent screen. */
+  githubLogin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const result = await this.authService.handleGithubCallback(payload);
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ data: { access_token: result.tokens.accessToken, refresh_token: result.tokens.refreshToken, expires_in: result.tokens.expiresIn, user: { id: result.user.id, username: result.user.username, display_name: result.user.displayName, email: result.user.email, avatar_url: result.user.avatarUrl, role: result.user.role } } }));
-    } catch (error) {
-      this.handleError(res, error);
-    }
-  }
+      const query = parseOrThrow(githubLoginSchema, req.query);
+      const { redirectUrl } = await this.authService.initiateLogin({
+        returnTo: query.return_to ?? null,
+      });
 
-  async handleLogout(req: IncomingMessage, res: ServerResponse): Promise<void> {
-    const body = await this.readJson(req);
+      res.redirect(302, redirectUrl);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /** GET /auth/github/callback — GitHub redirects here with a code and the state we issued. */
+  githubCallback = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const result = await this.authService.logout({ sessionId: body?.session_id ?? 'anonymous' });
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ data: { success: result.success } }));
-    } catch (error) {
-      this.handleError(res, error);
-    }
-  }
+      const query = parseOrThrow(githubCallbackSchema, req.query);
 
-  async handleRefresh(req: IncomingMessage, res: ServerResponse): Promise<void> {
-    const body = await this.readJson(req);
-    const payload: RefreshTokenDto = { refreshToken: body?.refresh_token };
+      const result = await this.authService.completeLogin({
+        code: query.code,
+        state: query.state,
+        userAgent: req.get('user-agent') ?? null,
+        ipAddress: req.ip ?? null,
+      });
+
+      this.applySessionCookies(res, result.tokens);
+
+      res.status(200).json({
+        data: {
+          user: serialiseUser(result.user),
+          access_token: result.tokens.accessToken,
+          refresh_token: result.tokens.refreshToken,
+          expires_in: result.tokens.expiresIn,
+          return_to: result.returnTo,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /** POST /auth/refresh — rotates the refresh token and issues a new pair. */
+  refresh = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const result = await this.authService.refreshSession(payload);
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ data: { access_token: result.tokens.accessToken, refresh_token: result.tokens.refreshToken, expires_in: result.tokens.expiresIn } }));
+      const body = parseOrThrow(refreshSchema, req.body ?? {});
+
+      // Browser clients hold the refresh token in an HttpOnly cookie and send no body;
+      // API clients post it explicitly. The cookie is preferred so a stale body value cannot
+      // override the live session cookie.
+      const refreshToken = req.cookies?.[REFRESH_TOKEN_COOKIE] ?? body.refresh_token;
+      if (typeof refreshToken !== 'string' || refreshToken.length === 0) {
+        throw new UnauthorizedError('A refresh token is required');
+      }
+
+      const result = await this.authService.refresh({ refreshToken });
+      this.applySessionCookies(res, result.tokens);
+
+      res.status(200).json({
+        data: {
+          access_token: result.tokens.accessToken,
+          refresh_token: result.tokens.refreshToken,
+          expires_in: result.tokens.expiresIn,
+        },
+      });
     } catch (error) {
-      this.handleError(res, error);
+      // A failed refresh leaves the client holding dead credentials; clearing them avoids a
+      // retry loop against a revoked session.
+      clearAuthCookies(res, this.config);
+      next(error);
     }
-  }
+  };
 
-  async handleMe(req: IncomingMessage, res: ServerResponse): Promise<void> {
-    const authorization = req.headers.authorization;
-    if (!authorization || !authorization.startsWith('Bearer ')) {
-      this.handleError(res, new AuthError('Unauthorized', 401, 'UNAUTHORIZED'));
-      return;
-    }
-
+  /** POST /auth/logout — revokes the caller's own session. Requires authentication. */
+  logout = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const accessToken = authorization.slice('Bearer '.length);
-      const user = await this.authService.getCurrentUser({ accessToken });
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ data: user }));
+      const principal = req.principal;
+      if (!principal) {
+        throw new UnauthorizedError();
+      }
+
+      await this.authService.logout(principal);
+      clearAuthCookies(res, this.config);
+
+      res.status(200).json({ data: { success: true } });
     } catch (error) {
-      this.handleError(res, error);
+      next(error);
     }
-  }
+  };
 
-  private async readJson(req: IncomingMessage): Promise<any> {
-    const chunks: Buffer[] = [];
-    for await (const chunk of req) {
-      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-    }
-    if (chunks.length === 0) {
-      return {};
-    }
-    return JSON.parse(Buffer.concat(chunks).toString('utf8'));
-  }
+  /** GET /auth/me — returns the authenticated user. */
+  me = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const principal = req.principal;
+      if (!principal) {
+        throw new UnauthorizedError();
+      }
 
-  private handleError(res: ServerResponse, error: unknown): void {
-    const authError = error as AuthError;
-    const statusCode = authError.statusCode ?? 500;
-    res.writeHead(statusCode, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: { code: authError.code ?? 'INTERNAL_ERROR', message: authError.message ?? 'Unexpected error.' } }));
+      res.status(200).json({
+        data: {
+          ...serialiseUser(principal.user),
+          session_id: principal.sessionId,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  private applySessionCookies(res: Response, tokens: AuthTokens): void {
+    setAuthCookies(res, tokens, this.config);
+    setCsrfCookie(res, randomBytes(32).toString('base64url'), this.config);
   }
+}
+
+function serialiseUser(user: AuthUser) {
+  return {
+    id: user.id,
+    github_id: user.githubId,
+    username: user.username,
+    display_name: user.displayName,
+    email: user.email,
+    avatar_url: user.avatarUrl,
+    role: user.role,
+    is_verified: user.isVerified,
+  };
 }

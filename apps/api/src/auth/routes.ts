@@ -1,78 +1,59 @@
-import { createServer, IncomingMessage, ServerResponse } from 'node:http';
-import { AuthController } from './controllers/auth.controller.js';
-import { AuthService } from './services/auth.service.js';
-import { InMemorySessionRepository } from './repositories/session.repository.js';
-import { InMemoryStateRepository } from './repositories/state.repository.js';
-import { AuthValidator } from './validators/auth.validator.js';
-import { createAuthMiddleware } from './middleware/auth.middleware.js';
-import { createAuthorizationMiddleware } from './middleware/authorization.middleware.js';
-import { createCsrfMiddleware } from './middleware/csrf.middleware.js';
+import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
+import type { AuthController } from './controllers/auth.controller.js';
+import type { AuthService } from './services/auth.service.js';
+import { requireAuth } from './middleware/auth.middleware.js';
+import { csrfProtection } from './middleware/csrf.middleware.js';
 
-export function createAuthServer() {
-  const sessionRepository = new InMemorySessionRepository();
-  const stateRepository = new InMemoryStateRepository();
-  const authService = new AuthService({
-    sessionRepository,
-    stateRepository,
-    issuer: process.env.JWT_ISSUER ?? 'stackloop',
-    audience: process.env.JWT_AUDIENCE ?? 'stackloop-api',
-    accessTokenTtlSeconds: Number(process.env.ACCESS_TOKEN_TTL_SECONDS ?? 900),
-    refreshTokenTtlSeconds: Number(process.env.REFRESH_TOKEN_TTL_SECONDS ?? 60 * 60 * 24 * 30),
-    signingSecret: process.env.JWT_SIGNING_SECRET ?? 'local-development-secret',
-  });
+export interface AuthRouterOptions {
+  authService: AuthService;
+  controller: AuthController;
+  /** Disabled in tests, where repeated requests would otherwise trip the limiter. */
+  enableRateLimiting?: boolean;
+}
 
-  const controller = new AuthController(authService);
-  const authMiddleware = createAuthMiddleware(authService);
-  const adminMiddleware = createAuthorizationMiddleware('admin');
-  const csrfMiddleware = createCsrfMiddleware();
+/**
+ * Rate limits on the authentication endpoints, per auth-security-spec.md section 17.
+ * Login and callback are grouped: both start work on behalf of an unauthenticated caller.
+ */
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: { code: 'RATE_LIMITED', message: 'Too many sign-in attempts. Try again later.' } },
+});
 
-  return createServer(async (req: IncomingMessage, res: ServerResponse) => {
-    const url = new URL(req.url ?? '/', 'https://api.stackloop.dev');
+const refreshLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 60,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: { code: 'RATE_LIMITED', message: 'Too many refresh attempts. Try again later.' } },
+});
 
-    try {
-      if (url.pathname === '/auth/github/login') {
-        AuthValidator.validateGithubLogin({ redirectUri: url.searchParams.get('redirect_uri') ?? undefined, state: url.searchParams.get('state') ?? undefined });
-        await controller.handleGithubLogin(req, res);
-        return;
-      }
+export function createAuthRouter({
+  authService,
+  controller,
+  enableRateLimiting = true,
+}: AuthRouterOptions): Router {
+  const router = Router();
+  const noop = (_req: unknown, _res: unknown, next: () => void) => next();
 
-      if (url.pathname === '/auth/github/callback') {
-        AuthValidator.validateGithubCallback({ code: req.headers['x-code']?.toString(), state: req.headers['x-state']?.toString() });
-        await controller.handleGithubCallback(req, res);
-        return;
-      }
+  const login = enableRateLimiting ? loginLimiter : noop;
+  const refresh = enableRateLimiting ? refreshLimiter : noop;
 
-      if (url.pathname === '/auth/logout') {
-        await controller.handleLogout(req, res);
-        return;
-      }
+  router.get('/github/login', login, controller.githubLogin);
+  router.get('/github/callback', login, controller.githubCallback);
 
-      if (url.pathname === '/auth/refresh') {
-        AuthValidator.validateRefreshToken({ refreshToken: req.headers['x-refresh-token']?.toString() });
-        await controller.handleRefresh(req, res);
-        return;
-      }
+  // Refresh is deliberately not behind requireAuth: the whole point is that the access token
+  // may already have expired. The refresh token itself is the credential.
+  router.post('/refresh', refresh, csrfProtection(), controller.refresh);
 
-      if (url.pathname === '/auth/me') {
-        await authMiddleware(req as IncomingMessage & { user?: any }, res, () => {});
-        await controller.handleMe(req, res);
-        return;
-      }
+  // Logout takes the session from the verified token, never from the request body.
+  router.post('/logout', csrfProtection(), requireAuth(authService), controller.logout);
 
-      if (url.pathname === '/admin') {
-        await authMiddleware(req as IncomingMessage & { user?: any }, res, () => {});
-        adminMiddleware(req as IncomingMessage & { user?: any }, res, () => {});
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ data: { ok: true } }));
-        return;
-      }
+  router.get('/me', requireAuth(authService), controller.me);
 
-      res.writeHead(404, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: { code: 'NOT_FOUND', message: 'Route not found.' } }));
-    } catch (error) {
-      const authError = error as Error & { statusCode?: number; code?: string };
-      res.writeHead(authError.statusCode ?? 500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: { code: authError.code ?? 'INTERNAL_ERROR', message: authError.message ?? 'Unexpected error' } }));
-    }
-  });
+  return router;
 }
