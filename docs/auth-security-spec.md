@@ -155,6 +155,12 @@ Set-Cookie: stackloop_session=<session_id>; HttpOnly; Secure; SameSite=Lax; Path
 - If opaque tokens are used, store token metadata in the database and use a random token ID
 
 ### JWT Strategy
+
+> **Amended by [ADR-0001](./adr/0001-jwt-signing-algorithm.md).** The MVP implements HS256 with a
+> shared `JWT_SIGNING_SECRET` because `apps/api` is the only token issuer and verifier. All other
+> requirements in this section — real signature verification, and validation of `exp`, `iss`, and
+> `aud` — remain binding. Asymmetric signing is a Phase 10 hardening item.
+
 If JWTs are used, the recommended approach is:
 - Use asymmetric signing (RS256 or ES256)
 - Keep claims minimal:

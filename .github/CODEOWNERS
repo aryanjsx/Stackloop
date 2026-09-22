@@ -1,0 +1,40 @@
+# StackLoop code ownership
+#
+# Ownership follows the team model in docs/monorepo-architecture.md section 17.
+# Replace the placeholder handles with real teams once the GitHub organization exists.
+
+# Default owner for anything not matched below
+*                       @your-org/maintainers
+
+# Applications
+/apps/web/              @your-org/web-team
+/apps/api/              @your-org/api-team
+
+# AI service
+/services/ai/           @your-org/ai-team
+
+# Shared packages
+/packages/ui/           @your-org/web-team
+/packages/design-system/ @your-org/web-team
+/packages/domain/       @your-org/api-team
+/packages/data-access/  @your-org/api-team
+/packages/auth/         @your-org/api-team
+
+# Database schema and migrations require API team review
+/apps/api/prisma/       @your-org/api-team
+/db/                    @your-org/api-team
+
+# Infrastructure, tooling, and automation
+/infra/                 @your-org/platform-team
+/configs/               @your-org/platform-team
+/scripts/               @your-org/platform-team
+/.github/               @your-org/platform-team
+
+# Security-sensitive documents require maintainer review
+/SECURITY.md            @your-org/maintainers
+/docs/auth-security-spec.md @your-org/maintainers
+
+# Product and delivery state
+/docs/prd.md            @your-org/maintainers
+/docs/phase-tracker.md  @your-org/maintainers
+/docs/adr/              @your-org/maintainers

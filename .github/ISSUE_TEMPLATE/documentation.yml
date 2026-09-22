@@ -1,0 +1,29 @@
+name: Documentation issue
+description: Report something unclear, missing, or incorrect in the documentation
+labels: ["documentation"]
+body:
+  - type: input
+    id: location
+    attributes:
+      label: Where is the problem?
+      description: File path or URL.
+      placeholder: docs/auth-security-spec.md, section 6
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong or missing?
+      description: |
+        If the documentation describes behavior that does not match the code, please say what
+        you observed instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested improvement
+    validations:
+      required: false

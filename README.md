@@ -28,10 +28,9 @@ StackLoop exists to make open source more approachable, more discoverable, and m
 - Contribution opportunities tailored to skill level and experience
 - Repository health and contribution insights for maintainers and contributors
 - A focused experience for discovering meaningful open-source projects
-- GitHub OAuth authentication with PKCE, state validation, refresh-token rotation, and protected session routes
-- Repository ingestion and metadata collection for GitHub repositories
-- Prisma-backed persistence scaffolding for users, repositories, collections, recommendations, and activity
-- Modular API structure for auth, repository collection, and data access layers
+
+> These describe the product StackLoop is being built to deliver. For what actually works today,
+> see [Current implementation status](#current-implementation-status).
 
 ## Why StackLoop?
 
@@ -209,12 +208,25 @@ The current API surface includes:
 
 ### Current implementation status
 
-The repository now includes working scaffolding for:
+StackLoop is in **Phase 4 (Core Backend Development)**. See the
+[Phase Tracker](docs/phase-tracker.md) for the authoritative status of every deliverable.
 
-- GitHub OAuth login, callback handling, session creation, and refresh-token rotation
-- Repository ingestion and enrichment from GitHub metadata
-- Prisma schema and repository abstractions for core platform entities
-- Automated tests for auth, repository collection, and database repository behavior
+Implemented:
+
+- Prisma schema covering users, sessions, repositories, collections, recommendations, and activity
+- A real GitHub API client for repository, README, topic, language, and contributor metadata
+
+In progress, and **not yet usable**:
+
+- GitHub OAuth. The flow does not yet contact GitHub, sessions are held in memory rather than
+  PostgreSQL, and the token layer does not perform real signature verification. Do not deploy
+  this or treat it as a security boundary.
+- Repository ingestion currently writes to an in-memory store rather than PostgreSQL.
+- There is no server entrypoint yet, so the API cannot be started.
+
+Not yet started: the web frontend (`apps/web`), the AI service (`services/ai`), container
+configuration, and CI workflows. The project structure below reflects the target layout from
+the [monorepo architecture spec](docs/monorepo-architecture.md), not the current tree.
 
 ## Development Workflow
 
@@ -273,6 +285,12 @@ Documentation is an essential part of the StackLoop project. As the platform evo
 - API references
 - Deployment guides
 - Product and usage documentation
+
+### Product and Delivery Documents
+
+- [Product Requirements Document](docs/prd.md)
+- [Phase Tracker](docs/phase-tracker.md) — the source of truth for what is built and what is planned
+- [Architecture Decision Records](docs/adr/)
 
 ### Product Design Documents
 
