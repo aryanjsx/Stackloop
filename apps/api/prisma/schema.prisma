@@ -45,23 +45,68 @@ model User {
   @@map("users")
 }
 
+/// A server-side session. Access tokens are stateless JWTs bound to a session via their `sid`
+/// claim and are therefore not stored; revoking the session invalidates them.
 model Session {
   id                    String    @id @default(uuid())
   userId                String    @map("user_id")
   provider              String    @default("github")
-  accessTokenEncrypted  String?   @map("access_token_encrypted")
-  refreshTokenEncrypted String?   @map("refresh_token_encrypted")
   expiresAt             DateTime  @map("expires_at")
   revokedAt             DateTime? @map("revoked_at")
+  revokedReason         String?   @map("revoked_reason")
+  lastActivityAt        DateTime  @default(now()) @map("last_activity_at")
+  userAgent             String?   @map("user_agent")
+  ipAddress             String?   @map("ip_address")
   createdAt             DateTime  @default(now()) @map("created_at")
   updatedAt             DateTime  @updatedAt @map("updated_at")
 
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokens         RefreshToken[]
 
   @@index([userId])
   @@index([expiresAt])
   @@index([revokedAt])
+  @@index([lastActivityAt])
   @@map("sessions")
+}
+
+/// One row per issued refresh token, retained after rotation so that replaying a spent token is
+/// detectable. Only the hash is stored; the token itself is never persisted.
+///
+/// Rotation marks the current row `usedAt` and inserts a successor. Presenting a token whose row
+/// already has `usedAt` set means the token was replayed, and the whole session is revoked.
+model RefreshToken {
+  id          String    @id @default(uuid())
+  sessionId   String    @map("session_id")
+  tokenHash   String    @unique @map("token_hash")
+  jti         String    @unique
+  expiresAt   DateTime  @map("expires_at")
+  usedAt      DateTime? @map("used_at")
+  revokedAt   DateTime? @map("revoked_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  session     Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([expiresAt])
+  @@index([usedAt])
+  @@map("refresh_tokens")
+}
+
+/// Transient OAuth authorization request state, held server-side so the callback can be matched
+/// to the login that started it. Rows are single-use and expire; see auth-security-spec section 4.
+model OAuthState {
+  id            String    @id @default(uuid())
+  state         String    @unique
+  codeChallenge String    @map("code_challenge")
+  redirectUri   String    @map("redirect_uri")
+  returnTo      String?   @map("return_to")
+  expiresAt     DateTime  @map("expires_at")
+  consumedAt    DateTime? @map("consumed_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@index([expiresAt])
+  @@map("oauth_states")
 }
 
 model Maintainer {
