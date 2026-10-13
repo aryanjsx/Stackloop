@@ -31,7 +31,7 @@ export class RepositoryCollectorService {
     const contributors = await this.deps.githubService.fetchContributors(input.owner, input.repo);
 
     const existing = await this.deps.repositoryRepository.findByGithubId(metadata.id);
-    const isUpdate = Boolean(existing && this.shouldUpdate(existing, metadata));
+    const _isUpdate = Boolean(existing && this.shouldUpdate(existing, metadata));
 
     const record: RepositoryRecord = {
       id: existing?.id ?? randomUUID(),

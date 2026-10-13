@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { PaginatedResult, PaginationParams, RepositoryFilter } from './types.js';
 
-export abstract class BaseRepository<T, TCreate, TUpdate> {
+export abstract class BaseRepository<T, _TCreate, _TUpdate> {
   constructor(protected readonly prisma: PrismaClient) {}
 
   protected abstract modelName: keyof PrismaClient;
