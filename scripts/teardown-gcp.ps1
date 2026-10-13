@@ -13,6 +13,9 @@ param (
     [string]$Region = "us-central1"
 )
 
+$env:Path = "C:\Users\LENOVO\google-cloud-sdk\bin;$env:Path"
+$env:CLOUDSDK_PYTHON = "C:\Users\LENOVO\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\python.exe"
+
 if (-not $ProjectId) {
     $ProjectId = "qwiklabs-gcp-04-1a1147d5705a"
 }

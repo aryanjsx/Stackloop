@@ -7,6 +7,9 @@ param(
   [string]$Region = "us-central1"
 )
 
+$env:Path = "C:\Users\LENOVO\google-cloud-sdk\bin;$env:Path"
+$env:CLOUDSDK_PYTHON = "C:\Users\LENOVO\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\python.exe"
+
 if (-not $ProjectId) {
   $ProjectId = "qwiklabs-gcp-04-1a1147d5705a"
 }
@@ -22,7 +25,7 @@ Write-Host "===========================================================" -Foregr
 
 # 1. Set Project
 Write-Host "[1/6] Configuring GCP project..." -ForegroundColor Yellow
-gcloud config set project $ProjectId
+gcloud config set project $ProjectId --quiet
 
 # 2. Enable APIs
 Write-Host "[2/6] Enabling required GCP APIs..." -ForegroundColor Yellow
@@ -31,28 +34,30 @@ gcloud services enable `
   cloudtasks.googleapis.com `
   artifactregistry.googleapis.com `
   aiplatform.googleapis.com `
-  secretmanager.googleapis.com
+  secretmanager.googleapis.com `
+  cloudbuild.googleapis.com `
+  --quiet
 
 # 3. Artifact Registry
 Write-Host "[3/6] Ensuring Artifact Registry repository exists..." -ForegroundColor Yellow
-gcloud artifacts repositories describe $RepoName --location=$Region 2>$null
+gcloud artifacts repositories describe $RepoName --location=$Region --quiet 2>$null
 if ($LASTEXITCODE -ne 0) {
-  gcloud artifacts repositories create $RepoName --repository-format=docker --location=$Region --description="StackLoop Docker repository"
+  gcloud artifacts repositories create $RepoName --repository-format=docker --location=$Region --description="StackLoop Docker repository" --quiet
 }
 
 # 4. Cloud Tasks Queue
 Write-Host "[4/6] Ensuring Cloud Tasks queue exists..." -ForegroundColor Yellow
-gcloud tasks queues describe $QueueName --location=$Region 2>$null
+gcloud tasks queues describe $QueueName --location=$Region --quiet 2>$null
 if ($LASTEXITCODE -ne 0) {
-  gcloud tasks queues create $QueueName --location=$Region --max-dispatches-per-second=5 --max-concurrent-dispatches=10 --max-attempts=5
+  gcloud tasks queues create $QueueName --location=$Region --max-dispatches-per-second=5 --max-concurrent-dispatches=10 --max-attempts=5 --quiet
 }
 
 $RegistryUrl = "${Region}-docker.pkg.dev/${ProjectId}/${RepoName}"
 
 # 5. Build and Deploy AI Microservice
-Write-Host "[5/6] Deploying AI microservice (services/ai)..." -ForegroundColor Yellow
+Write-Host "[5/6] Building and Deploying AI microservice (services/ai)..." -ForegroundColor Yellow
 $AiImage = "${RegistryUrl}/stackloop-ai:latest"
-gcloud builds submit services/ai --tag $AiImage
+gcloud builds submit services/ai --tag $AiImage --quiet
 
 gcloud run deploy stackloop-ai `
   --image=$AiImage `
@@ -63,15 +68,16 @@ gcloud run deploy stackloop-ai `
   --max-instances=3 `
   --cpu=1 `
   --memory=1Gi `
-  --set-env-vars="ENVIRONMENT=production,GEMINI_MODEL=gemini-2.5-flash,GCP_PROJECT=$ProjectId"
+  --set-env-vars="ENVIRONMENT=production,GEMINI_MODEL=gemini-2.5-flash,GCP_PROJECT=$ProjectId" `
+  --quiet
 
 $AiServiceUrl = (gcloud run services describe stackloop-ai --region=$Region --format='value(status.url)')
 Write-Host "AI Service deployed at: $AiServiceUrl" -ForegroundColor Green
 
-# Deploy Core API
-Write-Host "Deploying Core API (apps/api)..." -ForegroundColor Yellow
+# 6. Deploy Core API
+Write-Host "Building and Deploying Core API (apps/api)..." -ForegroundColor Yellow
 $ApiImage = "${RegistryUrl}/stackloop-api:latest"
-gcloud builds submit --tag $ApiImage -f apps/api/Dockerfile .
+gcloud builds submit --tag $ApiImage -f apps/api/Dockerfile . --quiet
 
 gcloud run deploy stackloop-api `
   --image=$ApiImage `
@@ -82,15 +88,16 @@ gcloud run deploy stackloop-api `
   --max-instances=5 `
   --cpu=1 `
   --memory=512Mi `
-  --set-env-vars="NODE_ENV=production,AI_SERVICE_URL=$AiServiceUrl"
+  --set-env-vars="NODE_ENV=production,AI_SERVICE_URL=$AiServiceUrl,GCP_PROJECT=$ProjectId,CLOUD_TASKS_QUEUE=$QueueName" `
+  --quiet
 
 $ApiServiceUrl = (gcloud run services describe stackloop-api --region=$Region --format='value(status.url)')
 Write-Host "Core API deployed at: $ApiServiceUrl" -ForegroundColor Green
 
-# Deploy Web Frontend
-Write-Host "Deploying Web Frontend (apps/web)..." -ForegroundColor Yellow
+# 7. Deploy Web Frontend
+Write-Host "Building and Deploying Web Frontend (apps/web)..." -ForegroundColor Yellow
 $WebImage = "${RegistryUrl}/stackloop-web:latest"
-gcloud builds submit --tag $WebImage -f apps/web/Dockerfile .
+gcloud builds submit --tag $WebImage -f apps/web/Dockerfile . --quiet
 
 gcloud run deploy stackloop-web `
   --image=$WebImage `
@@ -101,7 +108,8 @@ gcloud run deploy stackloop-web `
   --max-instances=5 `
   --cpu=1 `
   --memory=512Mi `
-  --set-env-vars="NODE_ENV=production,NEXT_PUBLIC_API_URL=$ApiServiceUrl"
+  --set-env-vars="NODE_ENV=production,NEXT_PUBLIC_API_URL=$ApiServiceUrl" `
+  --quiet
 
 $WebServiceUrl = (gcloud run services describe stackloop-web --region=$Region --format='value(status.url)')
 
