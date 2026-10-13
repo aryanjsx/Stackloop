@@ -1,402 +1,321 @@
-# StackLoop
-
 <p align="center">
-  <img src="./assets/banner.png" alt="StackLoop banner" />
+  <img src="./assets/build-with-gemini-poster.png" alt="#BuildWithGemini — StackLoop AI-Powered Repository Discovery" width="100%" />
 </p>
 
+# StackLoop — AI-Powered GitHub Discovery & Contribution Platform
+
 <p align="center">
-  <a href="#"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License" /></a>
-  <a href="#"><img src="https://img.shields.io/badge/Version-0.1.0-orange.svg" alt="Version" /></a>
-  <a href="#"><img src="https://img.shields.io/badge/Status-Alpha-yellow.svg" alt="Status" /></a>
-  <a href="docs/"><img src="https://img.shields.io/badge/Docs-Available-brightgreen.svg" alt="Docs" /></a>
+  <a href="https://github.com/aryanjsx/Stackloop"><img src="https://img.shields.io/badge/%23BuildWithGemini-Google%20AI%20Challenge-blueviolet?style=for-the-badge&logo=google" alt="#BuildWithGemini" /></a>
+  <a href="https://cloud.google.com/run"><img src="https://img.shields.io/badge/Google%20Cloud-Cloud%20Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white" alt="Google Cloud Run" /></a>
+  <a href="https://deepmind.google/technologies/gemini/"><img src="https://img.shields.io/badge/Model-Gemini%203.8%20Pro%20%26%20Flash-00BFFF?style=for-the-badge&logo=googlegemini&logoColor=white" alt="Gemini 3.8" /></a>
+  <a href="https://nextjs.org"><img src="https://img.shields.io/badge/Next.js-15%20App%20Router-black?style=for-the-badge&logo=next.js" alt="Next.js" /></a>
+  <a href="https://www.typescriptlang.org"><img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" /></a>
+  <a href="https://fastapi.tiangolo.com"><img src="https://img.shields.io/badge/FastAPI-Python%203.11-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue?style=for-the-badge" alt="License" /></a>
 </p>
 
-StackLoop is an AI-powered developer discovery platform designed to help developers discover, understand, learn from, and contribute to open-source projects with greater clarity and confidence.
+---
 
-Unlike traditional discovery tools such as GitHub Trending or Daily.dev, StackLoop combines repository intelligence, AI-generated summaries, personalized recommendations, learning paths, contribution opportunities, and repository insights into a single developer experience.
+## 🌟 Overview
 
-## Vision
+**StackLoop** is an AI-powered developer platform designed to help engineers move seamlessly from **discovering open-source repositories** to **understanding their architecture**, **learning the required skills**, and **making meaningful contributions**.
 
-StackLoop exists to make open source more approachable, more discoverable, and more rewarding for developers at every stage of their journey. Our goal is to become a central platform where developers can move from discovery to understanding to contribution without friction.
+Traditional discovery mechanisms like GitHub Trending or star counts surface projects based purely on vanity metrics. They don't tell a developer:
+- *What does this repository actually do beneath the marketing buzzwords?*
+- *What is the underlying software architecture and data flow?*
+- *Is this project realistic for my current skill level, or is it too complex?*
+- *Where should I look in the codebase to make my first pull request?*
 
-## Features
+StackLoop addresses this gap by combining **Google Gemini 3.8** multimodal intelligence, high-performance containerized microservices on **Google Cloud Run**, and a clean, responsive developer experience.
 
-- AI-generated repository summaries and insights
-- Personalized project recommendations based on developer interests and goals
-- Beginner-friendly explanations of complex repositories
-- Guided learning paths for onboarding into new technologies and communities
-- Contribution opportunities tailored to skill level and experience
-- Repository health and contribution insights for maintainers and contributors
-- A focused experience for discovering meaningful open-source projects
+---
 
-> These describe the product StackLoop is being built to deliver. For what actually works today,
-> see [Current implementation status](#current-implementation-status).
+## 🚀 Live Demo Deployments
 
-## Why StackLoop?
+StackLoop is fully containerized and hosted in production on Google Cloud Run with zero-idle scaling (`--min-instances=0`):
 
-Open source can be difficult to navigate, especially for beginners. Many projects are hard to understand, poorly documented, and difficult to evaluate before contributing. StackLoop addresses that challenge by making repository discovery smarter, more contextual, and more actionable.
+| Service | Environment | Production URL |
+| :--- | :--- | :--- |
+| **Web Frontend** | Next.js 15 App Router | [https://stackloop-web-959507167485.us-central1.run.app](https://stackloop-web-959507167485.us-central1.run.app) |
+| **API Gateway** | Express.js & TypeScript | [https://stackloop-api-959507167485.us-central1.run.app](https://stackloop-api-959507167485.us-central1.run.app) |
+| **AI Engine** | FastAPI & Gemini 3.8 | [https://stackloop-ai-959507167485.us-central1.run.app](https://stackloop-ai-959507167485.us-central1.run.app) |
 
-StackLoop is built for:
+---
 
-- Beginner developers looking for a clear entry point into open source
-- Software engineers seeking better project discovery
-- DevOps and AI engineers exploring relevant ecosystems
-- Contributors who want to find the right project faster
-- Maintainers who want to improve project visibility and engagement
+## ✨ Key Capabilities
 
-<!-- ## Screenshots
+### 1. 🤖 Gemini 3.8 Repository Intelligence
+- **Deep Architectural Summaries:** Automatically generates component breakdowns, system design analyses, and data flow summaries directly from repository code and documentation.
+- **Tradeoff & Quality Analysis:** Objectively highlights advantages, disadvantages, operational complexity, and production readiness.
+- **Onboarding Checklists:** Step-by-step guides helping new developers spin up projects locally and navigate key files.
 
-<p align="center">
-  <img src="https://via.placeholder.com/1200x680?text=StackLoop%20Dashboard%20Preview" alt="StackLoop dashboard preview" />
-</p> -->
+### 2. 💬 Persistent Bottom-Right AI Agent Widget
+- Embedded across the entire application at `bottom-6 right-6`.
+- **Route-Aware Context:** Detects when a developer is viewing a specific repository (`/repositories/:id`) and automatically injects that repository's metadata into the prompt context.
+- **One-Click Quick Prompts:**
+  - 📖 *Describe this repo*
+  - 🏗️ *Explain Architecture*
+  - ⚖️ *Pros & Cons / Tradeoffs*
+  - 🚀 *How to get started*
+- **Custom Inquiries:** Developers can ask freeform questions about code design, dependencies, or open-source recommendations.
+- **Dynamic Preference Respect:** Immediately adapts its explanation tone, complexity, and examples based on the active user profile.
 
-## Demo
+### 3. ⭐ Star, 🍴 Fork, & 🔗 Share Directly from the Web
+- **Optimistic GitHub Star:** Star or unstar repositories in real-time. Syncs with both GitHub's API (using OAuth or Personal Access Token) and StackLoop bookmarks.
+- **1-Click Fork Modal:** Authorize a fork into your personal GitHub account with one click, or jump directly to GitHub's native fork workflow.
+- **Multi-Platform Share Modal:**
+  - One-click shareable URL copy
+  - Direct sharing to Twitter / X, LinkedIn, and Reddit
+  - Native Web Share API integration on supported devices
+  - Copyable Markdown badge (`[![StackLoop Discovery]...]`) for README documentation.
 
-A live demo will be available soon. In the meantime, the project is being developed with a focus on a polished developer experience and strong documentation standards.
+### 4. 👤 Developer Profile & AI Preferences (`/profile`)
+- **Preferred Programming Languages:** Select or input target languages (TypeScript, Python, Rust, Go, C++, etc.).
+- **Focus Topics & Domains:** Target specific domains (Machine Learning, DevOps & Cloud, Security, System Design, etc.).
+- **Experience Level:**
+  - `Beginner`: High-clarity explanations without jargon, focusing on fundamentals.
+  - `Intermediate`: Balanced depth with practical implementation patterns.
+  - `Advanced`: Deep architectural patterns, memory/scaling tradeoffs, and production bottlenecks.
+- **AI Explanation Style:**
+  - `Concise & Direct`: Executive bullet points and fast evaluation.
+  - `Deep Architectural`: Modular boundaries and system mechanics.
+  - `Beginner Friendly`: Plain English and guided analogies.
+  - `Practical Code-First`: Starter snippets and actionable commands.
+- **GitHub Personal Access Token (PAT):** Optional fine-grained PAT storage with an interactive **"Test Connection"** button verifying permissions live against `https://api.github.com/user`.
 
-## Tech Stack
+### 5. 🔍 Curated Repository Feed & Search
+- Real-time search by repository name, owner, topic, or description.
+- Multi-dimensional filtering by programming language and taxonomy categories.
+- Sorting by Most Popular (stars), Most Forked, and Recently Updated.
+- Verified badges for authentic open-source organizations.
 
-### Frontend
-- Next.js
-- TypeScript
-- Tailwind CSS
+---
 
-### Backend
-- Node.js
-- TypeScript
-- Express.js
-- Prisma ORM
+## 🏛️ System Architecture
 
-### AI Layer
-- Python
-- FastAPI
-- Large Language Models
+StackLoop is engineered as a clean, decoupled monorepo managed with **pnpm workspaces** and **Turborepo**:
 
-### Data & Infrastructure
-- PostgreSQL
-- Redis
-- Docker
-- Azure Container Apps
-- GitHub Actions
+```mermaid
+flowchart TD
+    subgraph Client ["Client Layer"]
+        Browser["User Browser / Desktop & Mobile"]
+        Widget["AI Agent Widget (Gemini 3.8)"]
+    end
 
-## Architecture Overview
+    subgraph GCP ["Google Cloud Run (us-central1)"]
+        Web["apps/web (Next.js 15 App Router)\nSSR & Standalone Runner"]
+        API["apps/api (Express.js & TypeScript)\nAuth, Gateway, REST Controllers"]
+        AI["services/ai (FastAPI & Python)\nGemini 3.8 Multimodal Service"]
+    end
 
-StackLoop is composed of a modern web frontend, service-oriented backend APIs, an AI processing layer, and supporting data infrastructure.
+    subgraph Data ["Data & Storage"]
+        DB[(PostgreSQL / SQLite dev adapter)]
+        SecretMgr["GCP Secret Manager"]
+        Artifacts["Google Cloud Artifact Registry"]
+    end
 
-### High-Level Architecture
+    subgraph External ["External Ecosystem"]
+        GitHub["GitHub REST API v3\n(OAuth, Star, Fork, Repo Sync)"]
+        Vertex["Google Cloud Vertex AI\n(Gemini 3.8 Inference Engine)"]
+    end
 
-- The frontend provides the user experience for browsing repositories, reading insights, and exploring recommendations.
-- The API layer now includes modular authentication, repository collection, and Prisma-backed persistence services.
-- The AI layer generates summaries, learning paths, and contribution guidance from repository context.
-- PostgreSQL stores core application data, while Redis provides caching and performance optimization.
-- Docker and Azure Container Apps support containerized deployment and scalable hosting.
+    Browser -->|HTTPS| Web
+    Browser -->|API Queries / Star / Fork| API
+    Web -->|Internal Proxy| API
+    API -->|Prompt & Ingestion Dispatch| AI
+    API -->|User & Session Persistence| DB
+    API -->|Star / Fork / OAuth| GitHub
+    AI -->|Structured Generation| Vertex
+    Widget -->|Contextual Describe & Chat| API
+```
 
-### Design Principles
+---
 
-- Developer-first experience
-- Clear and explainable AI outputs
-- Fast, intuitive repository discovery
-- Extensible architecture for future capabilities
-- Strong contributor and maintainer ergonomics
+## 📁 Repository Structure
 
-## Getting Started
+```
+Stackloop/
+├── apps/
+│   ├── web/                     # Next.js 15 App Router Frontend
+│   │   ├── src/
+│   │   │   ├── app/             # Routes: /, /repositories/[id], /profile, /dashboard, /auth
+│   │   │   ├── components/      # AiAgentWidget, StarButton, ForkModal, ShareModal, Navbar
+│   │   │   └── lib/             # API client, types, storage helpers, utility formatters
+│   │   └── Dockerfile           # Multi-stage standalone production container
+│   │
+│   └── api/                     # Express.js REST Gateway
+│       ├── src/
+│       │   ├── auth/            # GitHub OAuth provider, JWT auth, user preferences
+│       │   ├── repositories/    # Repo controllers, star/fork handlers, AI proxy
+│       │   └── server.ts        # Express setup, security headers, rate limiting
+│       └── Dockerfile           # Multi-stage Node.js container
+│
+├── services/
+│   └── ai/                      # FastAPI AI Microservice
+│       ├── app/
+│       │   ├── routers/         # /summarize, /chat, /analyze endpoints
+│       │   └── services/        # Vertex AI & Gemini 3.8 prompt pipelines
+│       └── Dockerfile           # Python 3.11 container
+│
+├── assets/                      # Brand banners, posters, and design media
+├── docs/                        # Architecture specs, PRD, database schemas, ADRs
+├── cloudbuild-api.yaml          # Google Cloud Build pipeline for API
+├── cloudbuild-web.yaml          # Google Cloud Build pipeline for Web
+├── docker-compose.yml           # Local multi-service development setup
+├── package.json                 # Monorepo scripts & dependencies
+└── pnpm-workspace.yaml          # Workspace configuration
+```
 
-StackLoop is currently under active development. The following instructions are intended to help contributors get a local environment running quickly.
+---
 
-## Local Installation
+## 🛠️ Technology Stack
+
+| Layer | Technology | Rationale |
+| :--- | :--- | :--- |
+| **Frontend Framework** | [Next.js 15](https://nextjs.org) (App Router) | Server-side rendering, instant page transitions, and modern React 19 architecture. |
+| **Language** | [TypeScript 5](https://www.typescriptlang.org) | End-to-end type safety between frontend, backend, and API contracts. |
+| **Styling & Icons** | [Tailwind CSS](https://tailwindcss.com) + [Lucide](https://lucide.dev) | High-performance, responsive dark-mode UI with sleek modern aesthetics. |
+| **API Gateway** | [Express.js](https://expressjs.com) | Proven, battle-tested HTTP routing, robust middleware, and modular controller design. |
+| **AI Intelligence** | [Google Gemini 3.8](https://deepmind.google/technologies/gemini/) via Vertex AI | State-of-the-art multimodal reasoning, high-fidelity code analysis, and low latency. |
+| **AI Microservice** | [FastAPI](https://fastapi.tiangolo.com) (Python 3.11) | Pydantic schema validation, asynchronous execution, and native AI SDK integration. |
+| **Data Layer** | [Prisma ORM](https://www.prisma.io) + PostgreSQL | Strongly typed database client, automated migrations, and high developer ergonomics. |
+| **Cloud Infrastructure** | [Google Cloud Run](https://cloud.google.com/run) | Fully managed serverless containers with automatic scaling and zero idle billing. |
+| **CI / CD Pipeline** | [Google Cloud Build](https://cloud.google.com/build) | Automated container builds and Artifact Registry publication. |
+
+---
+
+## 🔌 API Endpoints Reference
+
+### 🔐 Authentication & Profile
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/auth/github` | Initiates GitHub OAuth flow requesting `public_repo` scope. |
+| `GET` | `/auth/github/callback` | Exchanges authorization code for session tokens. |
+| `GET` | `/auth/me` | Retrieves the currently authenticated user session. |
+| `GET` | `/auth/profile/preferences` | Fetches saved user engineering preferences. |
+| `PATCH`| `/auth/profile/preferences` | Updates preferred languages, domains, level, style, and PAT. |
+| `POST`| `/auth/logout` | Clears active authentication cookies and revokes session. |
+
+### 📦 Repository Discovery & Operations
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/repositories` | Paginated repository list with sorting, searching, and filters. |
+| `GET` | `/repositories/:id` | Detailed repository metadata including technologies and categories. |
+| `POST`| `/repositories/:id/star` | Stars/unstars repository on StackLoop and GitHub via user token/PAT. |
+| `POST`| `/repositories/:id/fork` | Performs automated fork via GitHub API or returns direct fork URL. |
+| `POST`| `/repositories/:id/ai-describe` | Generates on-demand Gemini 3.8 insights tailored to user preferences. |
+| `POST`| `/repositories/ai-discover` | Conversational open-source discovery driven by Gemini 3.8. |
+
+### 🩺 Health & System
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/health` | Cloud Run liveness probe returning HTTP 200 OK. |
+
+---
+
+## 💻 Local Development Setup
 
 ### Prerequisites
+- **Node.js** >= 20.x
+- **pnpm** >= 9.x (`npm install -g pnpm`)
+- **Python** >= 3.11
+- **Docker** & **Docker Compose** (optional, for local PostgreSQL)
 
-- Node.js 20 or later
-- pnpm 10 or later (`npm install -g pnpm`)
-- PostgreSQL 14 or later
-
-Python, Docker, and Redis are listed in the architecture documents but are not yet needed:
-the AI service and container configuration have not been built.
-
-### Clone and install
-
+### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-org/stackloop.git
-cd stackloop
+git clone https://github.com/aryanjsx/Stackloop.git
+cd Stackloop
+```
+
+### 2. Install Workspace Dependencies
+```bash
 pnpm install
 ```
 
-This repository uses pnpm workspaces. Installing with npm or yarn will not link the workspace
-correctly.
-
-### Configure the environment
-
+### 3. Environment Variables Setup
+Copy the example environment file:
 ```bash
 cp configs/env/.env.example .env
 ```
+Key configuration settings:
+```env
+PORT=4000
+NODE_ENV=development
+JWT_SIGNING_SECRET=your-secure-random-jwt-secret-at-least-32-chars
+GITHUB_CLIENT_ID=your_github_client_id
+GITHUB_CLIENT_SECRET=your_github_client_secret
+GITHUB_REDIRECT_URI=http://localhost:3000/auth/callback
+WEB_APP_ORIGIN=http://localhost:3000
+AI_SERVICE_URL=http://localhost:8000
+GEMINI_API_KEY=your_gemini_api_key
+```
 
-Then fill in the required values. Every variable is documented inline in that file.
+### 4. Run Development Servers
+Start both the Next.js frontend and Express API concurrently:
+```bash
+# Start API (port 4000) and Web (port 3000)
+pnpm dev
+```
 
-To obtain the GitHub credentials, register an OAuth application at
-**GitHub → Settings → Developer settings → OAuth Apps**. Set the authorization callback URL to
-exactly the value you use for `GITHUB_REDIRECT_URI`.
+Visit **[http://localhost:3000](http://localhost:3000)** in your browser.
 
-Generate a signing secret:
+### 5. Typecheck and Build Verification
+```bash
+# Typecheck entire monorepo
+pnpm --filter @stackloop/api typecheck
+pnpm --filter @stackloop/web typecheck
+
+# Production build
+pnpm --filter @stackloop/web build
+```
+
+---
+
+## ☁️ Google Cloud Deployment
+
+StackLoop is pre-configured for automated deployment to Google Cloud Run using Google Cloud Build and Google Artifact Registry:
 
 ```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+# 1. Build and push container images to Artifact Registry
+gcloud builds submit --config cloudbuild-api.yaml \
+  --substitutions _TAG="us-central1-docker.pkg.dev/$PROJECT_ID/stackloop-repo/stackloop-api:latest"
+
+gcloud builds submit --config cloudbuild-web.yaml \
+  --substitutions _TAG="us-central1-docker.pkg.dev/$PROJECT_ID/stackloop-repo/stackloop-web:latest"
+
+# 2. Deploy to Cloud Run with zero idle costs
+gcloud run deploy stackloop-api \
+  --image="us-central1-docker.pkg.dev/$PROJECT_ID/stackloop-repo/stackloop-api:latest" \
+  --region=us-central1 \
+  --min-instances=0 \
+  --allow-unauthenticated
+
+gcloud run deploy stackloop-web \
+  --image="us-central1-docker.pkg.dev/$PROJECT_ID/stackloop-repo/stackloop-web:latest" \
+  --region=us-central1 \
+  --min-instances=0 \
+  --allow-unauthenticated
 ```
 
-The API validates its configuration on startup and exits with a list of every problem if
-anything is missing or unsafe, rather than starting with insecure defaults.
+---
 
-### Set up the database
+## 🛡️ Security & Privacy
 
-```bash
-createdb stackloop
+- **Minimal OAuth Permissions:** StackLoop only requests permissions required for public repository reading and starring/forking actions.
+- **Token Hygiene:** Personal Access Tokens are held securely in client session storage and never persisted in database logs.
+- **Untrusted Input Protection:** README documents and repository code are treated strictly as untrusted text to prevent prompt injection and markdown-based XSS attacks.
+- **Zero Idle Billing:** Cloud Run instances scale down to 0 instances when idle, preventing accidental resource consumption.
 
-cd apps/api
-pnpm exec prisma migrate deploy   # apply the checked-in migration
-pnpm exec prisma generate         # generate the typed client
-```
+---
 
-Use `pnpm exec prisma migrate dev` instead when you are changing the schema and want a new
-migration generated.
+## 👤 Author
 
-### Run the API
+**Aryan Kumar**
+- GitHub: [@aryanjsx](https://github.com/aryanjsx)
+- Email: [kumararyan1929@gmail.com](mailto:kumararyan1929@gmail.com)
 
-```bash
-pnpm --filter @stackloop/api dev
-```
+---
 
-The API listens on `PORT` (default 3001). Check it is up:
+## 📄 License
 
-```bash
-curl http://localhost:3001/health
-```
-
-### Run the checks
-
-```bash
-pnpm test        # all workspace tests
-pnpm typecheck   # TypeScript, no emit
-pnpm build       # compile
-```
-
-## Environment Variables
-
-The single source of truth is [`configs/env/.env.example`](configs/env/.env.example), which
-documents each variable inline. Summary:
-
-| Variable | Required | Default | Purpose |
-|---|---|---|---|
-| `NODE_ENV` | no | `development` | `development`, `test`, or `production` |
-| `PORT` | no | `3001` | Port the API listens on |
-| `WEB_APP_ORIGIN` | no | `http://localhost:3000` | Origin of the web app |
-| `DATABASE_URL` | **yes** | — | PostgreSQL connection string |
-| `GITHUB_CLIENT_ID` | **yes** | — | OAuth app client id |
-| `GITHUB_CLIENT_SECRET` | **yes** | — | OAuth app client secret |
-| `GITHUB_REDIRECT_URI` | **yes** | — | Must match the callback URL registered with GitHub |
-| `GITHUB_TOKEN` | no | — | PAT for repository ingestion; raises the rate limit to 5000/hour |
-| `GITHUB_API_BASE_URL` | no | `https://api.github.com` | GitHub REST base URL |
-| `JWT_SIGNING_SECRET` | **yes** | — | HS256 secret, minimum 32 characters |
-| `JWT_ISSUER` | no | `stackloop` | Token `iss` claim, validated on every request |
-| `JWT_AUDIENCE` | no | `stackloop-api` | Token `aud` claim, validated on every request |
-| `ACCESS_TOKEN_TTL_SECONDS` | no | `900` | Access token lifetime |
-| `REFRESH_TOKEN_TTL_SECONDS` | no | `2592000` | Refresh token lifetime |
-| `OAUTH_STATE_TTL_SECONDS` | no | `600` | How long an unfinished login stays valid |
-
-In production the API additionally refuses to start if `JWT_SIGNING_SECRET` is a known
-placeholder, or if `GITHUB_REDIRECT_URI` or `WEB_APP_ORIGIN` use plain `http`.
-
-`REDIS_URL` and `OPENAI_API_KEY` appeared in earlier versions of this file but are not read by
-any code yet. They will return with Phase 10 and Phase 5 respectively.
-
-## Project Structure
-
-This is what the repository contains today. The larger target layout, including `apps/web`,
-`packages/*`, `services/ai`, and `infra/`, is described in the
-[monorepo architecture spec](docs/monorepo-architecture.md).
-
-```text
-.
-├── apps/
-│   └── api/                        # Express API (TypeScript, ESM)
-│       ├── prisma/
-│       │   ├── schema.prisma       # 23 models
-│       │   └── migrations/         # Checked-in SQL migrations
-│       ├── src/
-│       │   ├── auth/               # OAuth, tokens, sessions, middleware
-│       │   ├── config/             # Validated environment configuration
-│       │   ├── database/           # Prisma client and repository abstractions
-│       │   ├── middleware/         # Error handling
-│       │   ├── repositories/       # GitHub ingestion
-│       │   ├── app.ts              # Application composition
-│       │   └── server.ts           # Process entrypoint
-│       └── tests/
-├── configs/env/                    # Environment templates
-├── docs/                           # Product, architecture, and delivery documents
-├── .github/                        # Issue and PR templates, CODEOWNERS
-├── pnpm-workspace.yaml
-└── turbo.json
-```
-
-### Current API surface
-
-| Method | Path | Auth | Purpose |
-|---|---|---|---|
-| `GET` | `/health` | none | Liveness check |
-| `GET` | `/auth/github/login` | none | Begin GitHub OAuth |
-| `GET` | `/auth/github/callback` | none | Complete OAuth, create session |
-| `POST` | `/auth/refresh` | refresh token | Rotate tokens |
-| `POST` | `/auth/logout` | required | Revoke the caller's session |
-| `GET` | `/auth/me` | required | Current user |
-| `POST` | `/repositories/sync` | admin | Ingest one repository |
-| `POST` | `/repositories/sync/batch` | admin | Ingest up to 50 repositories |
-
-Full request and response shapes, error codes, cookie flags, and rate limits are documented in
-the [Authentication Endpoints reference](docs/api-auth-endpoints.md).
-
-### Current implementation status
-
-StackLoop is in **Phase 4 (Core Backend Development)**. The
-[Phase Tracker](docs/phase-tracker.md) is the authoritative status of every deliverable.
-
-Implemented and tested:
-
-- GitHub OAuth with server-side, single-use, expiring authorization state and S256 PKCE
-- HS256 access and refresh tokens with verified signatures and enforced `exp`, `iss`, and `aud`
-- PostgreSQL-backed sessions and refresh tokens, with rotation on every use and session
-  revocation when a spent token is replayed
-- Authentication, role-based authorization, CSRF, and rate-limiting middleware on the routes
-- Repository ingestion from the GitHub API, persisted through Prisma
-- Prisma schema and a checked-in initial migration
-
-Still outstanding in this phase:
-
-- The migration has not been applied to a live PostgreSQL instance, so the database-backed paths
-  are verified by their contracts and tests rather than against a running database.
-- The summary and search-index job queues are stubs; they report `queued: false`.
-
-Not started: the web frontend, the AI service, Redis, container configuration, and CI workflows.
-
-## Development Workflow
-
-1. Check the [Phase Tracker](docs/phase-tracker.md) to confirm your change belongs to the phase
-   that is currently open.
-2. Create a feature branch from main.
-3. Make focused changes with clear intent.
-4. Write or update tests, including the failure paths and not only the happy path.
-5. Run the checks locally.
-6. Open a pull request with a clear summary and the evidence you used to verify it.
-
-```bash
-git checkout -b feature/your-feature
-
-pnpm test
-pnpm typecheck
-
-git commit -m "feat: add repository insight summary"
-git push origin feature/your-feature
-```
-
-No linter is configured yet, so `pnpm lint` currently does nothing. Adding one is a Phase 9
-(Quality Assurance) deliverable.
-
-Full guidance, including branch naming and commit conventions, is in
-[CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Roadmap
-
-StackLoop is delivered in sixteen sequential phases. A phase begins only once the previous
-phase's exit criterion has been met and recorded in the
-[Phase Tracker](docs/phase-tracker.md), which is the authoritative status of every deliverable.
-
-| Phase | Name | Exit criterion | Status |
-|---|---|---|---|
-| 0 | Foundation & Product Strategy | Vision and MVP scope locked, architecture approved | Complete |
-| 1 | Brand & Repository Setup | Repo public, professional, contributor-ready | Complete |
-| 2 | UI/UX Design | All major screens approved | Complete |
-| 3 | Technical Architecture | Architecture finalized, implementation-ready | Complete |
-| 4 | Core Backend Development | Core backend services functional (real, not mock) | **In progress** |
-| 5 | AI & Discovery Engine | Repos receive AI-generated insights | Not started |
-| 6 | Frontend Development | Frontend fully integrates with backend APIs | Not started |
-| 7 | Personalization | Users receive customized content | Not started |
-| 8 | Open Source Features | Maintainers manage projects, contributors participate | Not started |
-| 9 | Quality Assurance | No critical defects, quality gates pass | Not started |
-| 10 | DevOps & Deployment | Production deployment stable | Not started |
-| 11 | Documentation | A new dev can set up and contribute from docs alone | Not started |
-| 12 | Beta Launch | Stable beta with validated feedback | Not started |
-| 13 | Public Launch | Public launch completed | Not started |
-| 14 | Community Growth | Consistent engagement and external contributions | Not started |
-| 15 | Growth & Scale | Matured beyond MVP into a real ecosystem | Not started |
-
-The product capabilities this roadmap delivers — summaries, difficulty ratings, recommendations,
-learning paths, and contribution matching — are scoped in the
-[Product Requirements Document](docs/prd.md), which also records what is deliberately **out** of
-MVP scope.
-
-## Contributing
-
-Contributions are welcome. Whether you are fixing a bug, improving documentation, or proposing a new idea, we appreciate thoughtful and well-scoped contributions.
-
-Start with [CONTRIBUTING.md](CONTRIBUTING.md) for setup, branch naming, commit conventions, and
-the review process, and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community expectations.
-
-Two things specific to this project are worth knowing before you start:
-
-- **Work stays within the open phase.** Check the [Phase Tracker](docs/phase-tracker.md) first.
-  If your idea belongs to a later phase, open an issue so it can be scheduled rather than merged
-  early.
-- **New features need a [PRD](docs/prd.md) update first**, and architecture changes that depart
-  from the specifications in `docs/` need an [ADR](docs/adr/).
-
-Good first issues are labelled `good first issue`. To report a security vulnerability, follow
-[SECURITY.md](SECURITY.md) rather than opening a public issue.
-
-## Community
-
-Join the StackLoop community to share feedback, ask questions, and help shape the platform.
-
-- GitHub Discussions
-- Issues and feature requests
-- Community updates and announcements
-
-## Documentation
-
-Documentation is an essential part of the StackLoop project. As the platform evolves, the documentation will expand to cover:
-
-- Architecture and system design
-- Contributor onboarding
-- API references
-- Deployment guides
-- Product and usage documentation
-
-### Product and Delivery Documents
-
-- [Product Requirements Document](docs/prd.md)
-- [Phase Tracker](docs/phase-tracker.md) — the source of truth for what is built and what is planned
-- [Architecture Decision Records](docs/adr/)
-
-### Product Design Documents
-
-- [Information Architecture Specification](docs/ia-information-architecture.md)
-- [UX Flow Specification](docs/ux-user-flows.md)
-- [Low-Fidelity Wireframe Specification](docs/wireframes-low-fidelity.md)
-- [UI and Design System Specification](docs/design-system-ui-spec.md)
-- [Authentication Endpoints Reference](docs/api-auth-endpoints.md)
-- [Monorepo Architecture Specification](docs/monorepo-architecture.md)
-- [System Architecture Specification](docs/system-architecture.md)
-- [Database Schema Specification](docs/database-schema.md)
-- [REST API Specification](docs/api-rest-spec.md)
-- [Authentication and Authorization Specification](docs/auth-security-spec.md)
-- [Production Infrastructure Specification](docs/production-infrastructure-spec.md)
-- [CI/CD Pipeline Specification](docs/cicd-pipeline-spec.md)
-- [Docker Architecture Specification](docs/docker-architecture-spec.md)
-- [Data Flow Architecture Specification](docs/data-flow-architecture-spec.md)
-
-## License
-
-StackLoop is licensed under the Apache License 2.0.
-
-See the [LICENSE](LICENSE) file for more details.
-
-## Acknowledgements
-
-StackLoop is inspired by the broader open-source ecosystem and the many developers who contribute to software every day. We are grateful to the communities, tools, and platforms that continue to make open source possible.
+This project is licensed under the **Apache 2.0 License** — see the [LICENSE](LICENSE) file for details.
