@@ -113,6 +113,12 @@ gcloud run deploy stackloop-web `
 
 $WebServiceUrl = (gcloud run services describe stackloop-web --region=$Region --format='value(status.url)')
 
+# Update API service with Web App Origin and Frontend Redirect URI
+gcloud run services update stackloop-api `
+  --region=$Region `
+  --update-env-vars="WEB_APP_ORIGIN=$WebServiceUrl,GITHUB_REDIRECT_URI=${WebServiceUrl}/auth/callback" `
+  --quiet
+
 Write-Host "===========================================================" -ForegroundColor Cyan
 Write-Host " StackLoop Deployment Complete! All services min-instances=0" -ForegroundColor Green
 Write-Host " Web Frontend : $WebServiceUrl" -ForegroundColor White

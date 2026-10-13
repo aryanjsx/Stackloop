@@ -50,7 +50,22 @@ export class HttpGithubOAuthProvider implements GithubOAuthProvider {
     this.oauthBaseUrl = config.oauthBaseUrl ?? DEFAULT_OAUTH_BASE_URL;
   }
 
+  private isDemoMode(): boolean {
+    const id = this.config.clientId?.toLowerCase() || '';
+    return (
+      !id ||
+      id.startsWith('placeholder') ||
+      id.startsWith('mock') ||
+      id === 'demo'
+    );
+  }
+
   buildAuthorizationUrl({ state, codeChallenge }: AuthorizationUrlParams): string {
+    if (this.isDemoMode()) {
+      const sep = this.config.redirectUri.includes('?') ? '&' : '?';
+      return `${this.config.redirectUri}${sep}code=demo_oauth_code&state=${encodeURIComponent(state)}`;
+    }
+
     const params = new URLSearchParams({
       client_id: this.config.clientId,
       redirect_uri: this.config.redirectUri,
@@ -66,6 +81,10 @@ export class HttpGithubOAuthProvider implements GithubOAuthProvider {
 
   /** Exchanges an authorization code for a GitHub access token. Returns the token. */
   async exchangeCode({ code, codeVerifier }: { code: string; codeVerifier: string }): Promise<string> {
+    if (this.isDemoMode() || code === 'demo_oauth_code') {
+      return 'demo_access_token';
+    }
+
     const response = await this.request(`${this.oauthBaseUrl}/login/oauth/access_token`, {
       method: 'POST',
       headers: {
@@ -97,6 +116,20 @@ export class HttpGithubOAuthProvider implements GithubOAuthProvider {
   }
 
   async fetchProfile(accessToken: string): Promise<GithubProfile> {
+    if (this.isDemoMode() || accessToken === 'demo_access_token') {
+      return {
+        id: 9990001,
+        login: 'alex-developer',
+        name: 'Alex Rivera',
+        email: 'alex.rivera@stackloop.dev',
+        avatarUrl: 'https://avatars.githubusercontent.com/u/9919?v=4',
+        bio: 'Fullstack AI Engineer & Open Source Contributor',
+        company: 'StackLoop AI',
+        location: 'San Francisco, CA',
+        websiteUrl: 'https://github.com/aryanjsx/Stackloop',
+      };
+    }
+
     const headers = {
       Accept: 'application/vnd.github+json',
       Authorization: `Bearer ${accessToken}`,

@@ -55,6 +55,13 @@ export class AuthController {
 
       this.applySessionCookies(res, result.tokens);
 
+      const accept = req.get('accept') ?? '';
+      if (accept.includes('text/html')) {
+        const returnTo = result.returnTo || '/dashboard';
+        const target = returnTo.startsWith('/') ? returnTo : `/${returnTo}`;
+        return res.redirect(302, `${this.config.webAppOrigin}${target}`);
+      }
+
       res.status(200).json({
         data: {
           user: serialiseUser(result.user),
@@ -65,6 +72,11 @@ export class AuthController {
         },
       });
     } catch (error) {
+      const accept = req.get('accept') ?? '';
+      if (accept.includes('text/html')) {
+        const message = error instanceof Error ? error.message : 'auth_failed';
+        return res.redirect(302, `${this.config.webAppOrigin}/auth/callback?error=${encodeURIComponent(message)}`);
+      }
       next(error);
     }
   };

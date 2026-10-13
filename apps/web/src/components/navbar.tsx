@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { fetchCurrentUser, getGitHubLoginUrl, logout } from '../lib/api';
 import type { User } from '../lib/types';
-import { Github, Bookmark, Compass, LogOut, Loader2 } from 'lucide-react';
+import { Github, Bookmark, Compass, LogOut, Loader2, Sparkles } from 'lucide-react';
 
 export function Navbar() {
   const pathname = usePathname();
@@ -118,13 +118,23 @@ export function Navbar() {
               </button>
             </div>
           ) : (
-            <a
-              href={getGitHubLoginUrl(pathname)}
-              className="inline-flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs sm:text-sm font-medium px-3.5 py-1.5 rounded-lg shadow-sm transition border border-blue-400/20"
-            >
-              <Github className="w-4 h-4" />
-              <span>Sign in with GitHub</span>
-            </a>
+            <div className="flex items-center space-x-2">
+              <a
+                href={getGitHubLoginUrl(pathname)}
+                title="Instant demo sign in without GitHub credentials"
+                className="hidden sm:inline-flex items-center space-x-1.5 bg-blue-950/60 hover:bg-blue-900/60 text-blue-300 border border-blue-700/50 text-xs font-medium px-2.5 py-1.5 rounded-lg transition"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+                <span>Demo Sign In</span>
+              </a>
+              <a
+                href={getGitHubLoginUrl(pathname)}
+                className="inline-flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs sm:text-sm font-medium px-3.5 py-1.5 rounded-lg shadow-sm transition border border-blue-400/20"
+              >
+                <Github className="w-4 h-4" />
+                <span>Sign in with GitHub</span>
+              </a>
+            </div>
           )}
         </div>
       </div>
