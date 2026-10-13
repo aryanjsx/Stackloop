@@ -32,7 +32,7 @@ function CallbackContent() {
       }
 
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+        const apiUrl = typeof window !== 'undefined' ? '/api-backend' : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000');
         const res = await fetch(`${apiUrl}/auth/github/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`, {
           method: 'GET',
           credentials: 'include',

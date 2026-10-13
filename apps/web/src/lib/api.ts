@@ -1,8 +1,8 @@
 import type { PaginatedResult, Repository, RepositoryDetail, SavedRepositoryItem, User } from './types';
 
-// By default in browser we use direct API or proxy rewrite
+// In browser we route through Next.js rewrite (/api-backend) to avoid cross-site CORS issues
 const API_BASE_URL = typeof window !== 'undefined'
-  ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000')
+  ? '/api-backend'
   : (process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000');
 
 function getCsrfToken(): string | undefined {
@@ -110,6 +110,6 @@ export async function fetchSavedRepositories(params?: {
 }
 
 export function getGitHubLoginUrl(returnTo: string = '/'): string {
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+  const base = typeof window !== 'undefined' ? '/api-backend' : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000');
   return `${base}/auth/github/login?return_to=${encodeURIComponent(returnTo)}`;
 }

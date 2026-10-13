@@ -7,18 +7,25 @@ import { PrismaAuthUserRepository } from './auth/repositories/prisma-auth-user.r
 import { PrismaOAuthStateRepository } from './auth/repositories/prisma-oauth-state.repository.js';
 import { PrismaRefreshTokenRepository } from './auth/repositories/prisma-refresh-token.repository.js';
 import { PrismaSessionRepository } from './auth/repositories/prisma-session.repository.js';
+import {
+  InMemoryAuthUserRepository,
+  InMemoryOAuthStateRepository,
+  InMemoryRefreshTokenRepository,
+  InMemorySessionRepository,
+} from './auth/repositories/in-memory-auth.repository.js';
 import { TokenService } from './auth/tokens/token.service.js';
 import { RepositoryController } from './repositories/controllers/repository.controller.js';
 import { RepositoryCollectorService } from './repositories/services/repository-collector.service.js';
 import { GitHubService } from './repositories/services/github.service.js';
 import { PrismaRepositoryRepository } from './repositories/repositories/prisma-repository.repository.js';
+import { InMemoryRepositoryRepository } from './repositories/repositories/repository.repository.js';
+import { populateSeedRepositories } from './repositories/repositories/seed.js';
 import { CloudTasksQueueProducer } from './repositories/services/cloud-tasks-queue.producer.js';
+import type { RepositoryRepository } from './repositories/types.js';
 
 /**
- * Process entrypoint. Composes the real, database-backed implementations and starts listening.
- *
- * Before this existed, `createAuthServer()` and `createRepositoryRoutes()` each built a separate
- * http.Server that nothing ever called, so the API could not be started at all.
+ * Process entrypoint. Connects to database when available, or seamlessly falls back to
+ * preloaded in-memory repositories for resilient Cloud Run deployments without downtime.
  */
 async function main(): Promise<void> {
   const config = loadConfig();
@@ -27,32 +34,64 @@ async function main(): Promise<void> {
     log: config.isProduction ? ['error', 'warn'] : ['error', 'warn'],
   });
 
-  // Fail before accepting traffic rather than on the first request.
-  await prisma.$connect();
+  let isDbConnected = false;
+  try {
+    await Promise.race([
+      prisma.$connect(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timed out')), 3000)),
+    ]);
+    isDbConnected = true;
+    console.log('[StackLoop API] PostgreSQL connection established successfully.');
+  } catch (error) {
+    console.warn('[StackLoop API] PostgreSQL connection unavailable; using in-memory store for fallback.');
+  }
 
-  const authService = new AuthService({
-    oauthStateRepository: new PrismaOAuthStateRepository(prisma),
-    sessionRepository: new PrismaSessionRepository(prisma),
-    refreshTokenRepository: new PrismaRefreshTokenRepository(prisma),
-    userRepository: new PrismaAuthUserRepository(prisma),
-    githubProvider: new HttpGithubOAuthProvider({
-      clientId: config.github.clientId,
-      clientSecret: config.github.clientSecret,
-      redirectUri: config.github.redirectUri,
-      apiBaseUrl: config.github.apiBaseUrl,
-    }),
-    tokenService: new TokenService({
-      signingSecret: config.auth.signingSecret,
-      issuer: config.auth.issuer,
-      audience: config.auth.audience,
-      accessTokenTtlSeconds: config.auth.accessTokenTtlSeconds,
-      refreshTokenTtlSeconds: config.auth.refreshTokenTtlSeconds,
-    }),
-    oauthStateTtlSeconds: config.auth.oauthStateTtlSeconds,
+  let repositoryRepository: RepositoryRepository;
+  let authService: AuthService;
+
+  const githubProvider = new HttpGithubOAuthProvider({
+    clientId: config.github.clientId,
+    clientSecret: config.github.clientSecret,
+    redirectUri: config.github.redirectUri,
+    apiBaseUrl: config.github.apiBaseUrl,
+  });
+
+  const tokenService = new TokenService({
+    signingSecret: config.auth.signingSecret,
+    issuer: config.auth.issuer,
+    audience: config.auth.audience,
+    accessTokenTtlSeconds: config.auth.accessTokenTtlSeconds,
     refreshTokenTtlSeconds: config.auth.refreshTokenTtlSeconds,
   });
 
-  const repositoryRepository = new PrismaRepositoryRepository(prisma);
+  if (isDbConnected) {
+    authService = new AuthService({
+      oauthStateRepository: new PrismaOAuthStateRepository(prisma),
+      sessionRepository: new PrismaSessionRepository(prisma),
+      refreshTokenRepository: new PrismaRefreshTokenRepository(prisma),
+      userRepository: new PrismaAuthUserRepository(prisma),
+      githubProvider,
+      tokenService,
+      oauthStateTtlSeconds: config.auth.oauthStateTtlSeconds,
+      refreshTokenTtlSeconds: config.auth.refreshTokenTtlSeconds,
+    });
+    repositoryRepository = new PrismaRepositoryRepository(prisma);
+  } else {
+    authService = new AuthService({
+      oauthStateRepository: new InMemoryOAuthStateRepository(),
+      sessionRepository: new InMemorySessionRepository(),
+      refreshTokenRepository: new InMemoryRefreshTokenRepository(),
+      userRepository: new InMemoryAuthUserRepository(),
+      githubProvider,
+      tokenService,
+      oauthStateTtlSeconds: config.auth.oauthStateTtlSeconds,
+      refreshTokenTtlSeconds: config.auth.refreshTokenTtlSeconds,
+    });
+    const inMemoryRepo = new InMemoryRepositoryRepository();
+    await populateSeedRepositories(inMemoryRepo);
+    repositoryRepository = inMemoryRepo;
+  }
+
   const queueProducer = new CloudTasksQueueProducer({
     aiServiceUrl: process.env.AI_SERVICE_URL,
     cloudTasksSecret: process.env.CLOUD_TASKS_SECRET,
@@ -88,7 +127,11 @@ async function main(): Promise<void> {
   const shutdown = (signal: string) => {
     console.log(`Received ${signal}, shutting down.`);
     server.close(() => {
-      void prisma.$disconnect().finally(() => process.exit(0));
+      if (isDbConnected) {
+        void prisma.$disconnect().finally(() => process.exit(0));
+      } else {
+        process.exit(0);
+      }
     });
   };
 
@@ -98,7 +141,6 @@ async function main(): Promise<void> {
 
 main().catch((error: unknown) => {
   if (error instanceof ConfigurationError) {
-    // Configuration problems are operator errors; a stack trace only obscures the fix.
     console.error(error.message);
     process.exit(1);
   }

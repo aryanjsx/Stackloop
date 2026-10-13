@@ -8,7 +8,7 @@ FROM base AS builder
 WORKDIR /app
 
 # Copy root workspace and package manifests
-COPY pnpm-lock.yaml package.json pnpm-workspace.yaml ./
+COPY pnpm-lock.yaml package.json pnpm-workspace.yaml tsconfig.base.json ./
 COPY apps/api/package.json ./apps/api/package.json
 COPY apps/api/prisma ./apps/api/prisma
 
@@ -21,8 +21,8 @@ RUN pnpm --filter @stackloop/api build
 FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-ENV PORT=4000
-EXPOSE 4000
+ENV PORT=8080
+EXPOSE 8080
 
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
@@ -31,4 +31,4 @@ COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
 
 WORKDIR /app/apps/api
-CMD ["node", "dist/server.js"]
+CMD ["node", "dist/src/server.js"]

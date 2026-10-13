@@ -1,0 +1,13 @@
+.git
+.gitignore
+.env
+.env.*
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+**/dist/
+.venv/
+**/__pycache__/
+*.pyc
+.system_generated/
