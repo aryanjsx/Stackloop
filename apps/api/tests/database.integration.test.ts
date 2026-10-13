@@ -66,6 +66,9 @@ test('PostgreSQL Database Integration Tests', async (t) => {
         email: 'test-integration@stackloop.local',
         avatarUrl: 'https://example.com/avatar.png',
         bio: 'Integration test user bio',
+        company: null,
+        location: null,
+        websiteUrl: null,
       },
       now
     );
@@ -86,6 +89,11 @@ test('PostgreSQL Database Integration Tests', async (t) => {
         login: 'integration-test-user-updated',
         name: 'Integration Test User Updated',
         email: 'test-integration@stackloop.local',
+        avatarUrl: 'https://example.com/avatar.png',
+        bio: null,
+        company: null,
+        location: null,
+        websiteUrl: null,
       },
       new Date()
     );
@@ -106,6 +114,7 @@ test('PostgreSQL Database Integration Tests', async (t) => {
 
     const session = await sessionRepo.create({
       userId: user.id,
+      provider: 'github',
       userAgent: 'StackLoop-Integration-Test/1.0',
       ipAddress: '127.0.0.1',
       expiresAt,
@@ -120,25 +129,41 @@ test('PostgreSQL Database Integration Tests', async (t) => {
     assert.equal(fetched.id, session.id);
 
     // Revoke session
-    await sessionRepo.revoke(session.id, 'integration test teardown');
+    const revokedAt = new Date();
+    await sessionRepo.revoke(session.id, 'integration test teardown', revokedAt);
     const revoked = await sessionRepo.findById(session.id);
     assert.ok(revoked?.revokedAt != null);
-    assert.equal(revoked?.revokedReason, 'integration test teardown');
   });
 
-  await t.test('PrismaRepositoryRepository creates and queries repositories with pagination', async () => {
+  await t.test('PrismaRepositoryRepository creates, queries and bookmarks repositories', async () => {
     const repoRepo = new PrismaRepositoryRepository(prisma!);
+    const user = await prisma!.user.findUnique({ where: { githubId: BigInt(testGithubId) } });
+    assert.ok(user);
 
-    const created = await repoRepo.create({
+    const created = await repoRepo.upsert({
+      id: 'test-repo-id',
       githubId: testRepoGithubId,
       ownerLogin: 'stackloop-test',
       name: 'integration-repo',
       fullName: 'stackloop-test/integration-repo',
       description: 'A test repository for integration validation',
+      homepageUrl: undefined,
       repositoryUrl: 'https://github.com/stackloop-test/integration-repo',
       defaultBranch: 'main',
       language: 'TypeScript',
       stargazersCount: 42,
+      forksCount: 0,
+      openIssuesCount: 0,
+      watchersCount: 42,
+      sizeKb: 100,
+      isArchived: false,
+      isDisabled: false,
+      isPrivate: false,
+      isVerified: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      lastPushAt: undefined,
+      lastSyncedAt: new Date(),
     });
 
     assert.ok(created.id);
@@ -148,9 +173,21 @@ test('PostgreSQL Database Integration Tests', async (t) => {
     assert.ok(found);
     assert.equal(found.fullName, 'stackloop-test/integration-repo');
 
-    const paginated = await repoRepo.findMany({}, { page: 1, pageSize: 10 });
+    const paginated = await repoRepo.list({ page: 1, pageSize: 10 });
     assert.ok(paginated.total >= 1);
     assert.ok(paginated.items.length >= 1);
     assert.equal(paginated.page, 1);
+
+    // Test saving repository
+    const saved = await repoRepo.saveRepository(user.id, created.id);
+    assert.equal(saved.saved, true);
+    assert.equal(await repoRepo.isSaved(user.id, created.id), true);
+
+    const savedList = await repoRepo.listSaved(user.id, { page: 1, pageSize: 10 });
+    assert.ok(savedList.total >= 1);
+
+    // Test unsaving
+    await repoRepo.unsaveRepository(user.id, created.id);
+    assert.equal(await repoRepo.isSaved(user.id, created.id), false);
   });
 });

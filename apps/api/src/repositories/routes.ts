@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import type { AuthService } from '../auth/services/auth.service.js';
-import { requireAuth } from '../auth/middleware/auth.middleware.js';
+import { optionalAuth, requireAuth } from '../auth/middleware/auth.middleware.js';
 import { requireRole } from '../auth/middleware/authorization.middleware.js';
 import { csrfProtection } from '../auth/middleware/csrf.middleware.js';
 import type { RepositoryController } from './controllers/repository.controller.js';
@@ -11,11 +11,7 @@ export interface RepositoryRouterOptions {
 }
 
 /**
- * Repository ingestion endpoints.
- *
- * These are platform operations, not user actions: each one spends GitHub API quota and writes
- * to shared data, so they require the admin role. Previously they were unauthenticated and
- * unvalidated.
+ * Repository discovery, bookmark, and ingestion endpoints.
  */
 export function createRepositoryRouter({
   authService,
@@ -23,10 +19,37 @@ export function createRepositoryRouter({
 }: RepositoryRouterOptions): Router {
   const router = Router();
 
-  router.use(csrfProtection(), requireAuth(authService), requireRole('admin'));
+  // Admin platform ingestion operations
+  router.post('/sync/batch', csrfProtection(), requireAuth(authService), requireRole('admin'), controller.syncBatch);
+  router.post('/sync', csrfProtection(), requireAuth(authService), requireRole('admin'), controller.sync);
 
-  router.post('/sync', controller.sync);
-  router.post('/sync/batch', controller.syncBatch);
+  // Authenticated user bookmark actions on specific repositories
+  router.post('/:id/save', csrfProtection(), requireAuth(authService), controller.saveRepository);
+  router.delete('/:id/save', csrfProtection(), requireAuth(authService), controller.unsaveRepository);
+
+  // Public repository discovery and lookup (optionalAuth checks if user has saved this repo)
+  router.get('/by-name/:owner/:name', optionalAuth(authService), controller.getByOwnerAndName);
+  router.get('/:id', optionalAuth(authService), controller.getById);
+  router.get('/', optionalAuth(authService), controller.list);
+
+  return router;
+}
+
+/**
+ * Saved repositories (user bookmarks) router.
+ * Requires authentication for all endpoints.
+ */
+export function createSavedRepositoryRouter({
+  authService,
+  controller,
+}: RepositoryRouterOptions): Router {
+  const router = Router();
+
+  router.use(requireAuth(authService));
+
+  router.get('/', controller.listSaved);
+  router.post('/', csrfProtection(), controller.saveRepository);
+  router.delete('/:id', csrfProtection(), controller.unsaveRepository);
 
   return router;
 }

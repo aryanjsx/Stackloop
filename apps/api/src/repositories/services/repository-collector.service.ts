@@ -23,6 +23,10 @@ export interface CollectRepositoryResult {
 export class RepositoryCollectorService {
   constructor(private readonly deps: RepositoryCollectorDependencies) {}
 
+  get repositoryRepository(): RepositoryRepository {
+    return this.deps.repositoryRepository;
+  }
+
   async collectRepository(input: CollectRepositoryInput): Promise<CollectRepositoryResult> {
     const metadata = await this.deps.githubService.fetchRepository(input.owner, input.repo);
     const readme = await this.deps.githubService.fetchReadme(input.owner, input.repo);

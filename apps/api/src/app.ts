@@ -5,7 +5,7 @@ import { AuthController } from './auth/controllers/auth.controller.js';
 import { createAuthRouter } from './auth/routes.js';
 import type { AuthService } from './auth/services/auth.service.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
-import { createRepositoryRouter } from './repositories/routes.js';
+import { createRepositoryRouter, createSavedRepositoryRouter } from './repositories/routes.js';
 import type { RepositoryController } from './repositories/controllers/repository.controller.js';
 
 export interface CreateAppOptions {
@@ -69,6 +69,13 @@ export function createApp(options: CreateAppOptions): Express {
     app.use(
       '/repositories',
       createRepositoryRouter({
+        authService: options.authService,
+        controller: options.repositoryController,
+      }),
+    );
+    app.use(
+      '/saved-repositories',
+      createSavedRepositoryRouter({
         authService: options.authService,
         controller: options.repositoryController,
       }),

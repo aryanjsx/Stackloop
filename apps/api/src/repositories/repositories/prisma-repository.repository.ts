@@ -1,15 +1,13 @@
 import type { PrismaClient } from '@prisma/client';
-import type { RepositoryRecord, RepositoryRepository } from '../types.js';
+import type {
+  PaginatedRepositories,
+  RepositoryDetailRecord,
+  RepositoryQueryOptions,
+  RepositoryRecord,
+  RepositoryRepository,
+  SavedRepositoryRecord,
+} from '../types.js';
 
-/**
- * PostgreSQL-backed repository store, replacing the in-memory Map the collector used to write
- * to. Ingested repositories now survive a restart and are visible to the rest of the platform.
- *
- * `readme`, `topics`, and `contributors` are collected but not persisted here: the schema models
- * topics and contributors as their own relations, and the README is input to the Phase 5 AI
- * summarisation step rather than a column on `repositories`. They remain on the in-memory record
- * so the collector can hand them to the enrichment queue.
- */
 export class PrismaRepositoryRepository implements RepositoryRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
@@ -18,6 +16,46 @@ export class PrismaRepositoryRepository implements RepositoryRepository {
       where: { githubId: BigInt(githubId) },
     });
     return record ? toRecord(record) : null;
+  }
+
+  async findById(id: string, currentUserId?: string): Promise<RepositoryDetailRecord | null> {
+    const record = await this.prisma.repository.findFirst({
+      where: { id, deletedAt: null },
+      include: {
+        technologies: { include: { technology: true } },
+        categories: { include: { category: true } },
+        aiMetadata: { orderBy: { generatedAt: 'desc' }, take: 1 },
+        ...(currentUserId ? { savedBy: { where: { userId: currentUserId } } } : {}),
+      },
+    });
+
+    return record ? toDetailRecord(record, currentUserId) : null;
+  }
+
+  async findByFullName(owner: string, name: string, currentUserId?: string): Promise<RepositoryDetailRecord | null> {
+    const fullName = `${owner}/${name}`;
+    const record = await this.prisma.repository.findFirst({
+      where: {
+        OR: [
+          { fullName: { equals: fullName, mode: 'insensitive' } },
+          {
+            AND: [
+              { ownerLogin: { equals: owner, mode: 'insensitive' } },
+              { name: { equals: name, mode: 'insensitive' } },
+            ],
+          },
+        ],
+        deletedAt: null,
+      },
+      include: {
+        technologies: { include: { technology: true } },
+        categories: { include: { category: true } },
+        aiMetadata: { orderBy: { generatedAt: 'desc' }, take: 1 },
+        ...(currentUserId ? { savedBy: { where: { userId: currentUserId } } } : {}),
+      },
+    });
+
+    return record ? toDetailRecord(record, currentUserId) : null;
   }
 
   async upsert(record: RepositoryRecord): Promise<RepositoryRecord> {
@@ -45,21 +83,120 @@ export class PrismaRepositoryRepository implements RepositoryRepository {
     const saved = await this.prisma.repository.upsert({
       where: { githubId: BigInt(record.githubId) },
       create: { githubId: BigInt(record.githubId), ...data },
-      // `isVerified` is omitted deliberately: it is a StackLoop moderation decision, and a
-      // routine re-sync must not silently reset it.
       update: { ...data, deletedAt: null },
     });
 
     return toRecord(saved);
   }
 
-  async list(): Promise<RepositoryRecord[]> {
-    const records = await this.prisma.repository.findMany({
-      where: { deletedAt: null },
-      orderBy: { stargazersCount: 'desc' },
-      take: 100,
+  async list(options?: RepositoryQueryOptions): Promise<PaginatedRepositories> {
+    const where: Record<string, unknown> = { deletedAt: null };
+
+    if (options?.q) {
+      where.OR = [
+        { name: { contains: options.q, mode: 'insensitive' } },
+        { fullName: { contains: options.q, mode: 'insensitive' } },
+        { description: { contains: options.q, mode: 'insensitive' } },
+      ];
+    }
+
+    if (options?.language) {
+      where.language = { equals: options.language, mode: 'insensitive' };
+    }
+
+    let orderBy: Record<string, 'asc' | 'desc'> = { stargazersCount: 'desc' };
+    if (options?.sort === 'newest') {
+      orderBy = { createdAt: 'desc' };
+    } else if (options?.sort === 'updated') {
+      orderBy = { lastPushAt: 'desc' };
+    }
+
+    const page = Math.max(1, options?.page ?? 1);
+    const pageSize = Math.min(100, Math.max(1, options?.pageSize ?? 20));
+    const skip = (page - 1) * pageSize;
+
+    const [items, total] = await Promise.all([
+      this.prisma.repository.findMany({
+        where,
+        orderBy,
+        skip,
+        take: pageSize,
+      }),
+      this.prisma.repository.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(total / pageSize) || 1;
+
+    return {
+      items: items.map(toRecord),
+      total,
+      page,
+      pageSize,
+      totalPages,
+    };
+  }
+
+  async isSaved(userId: string, repositoryId: string): Promise<boolean> {
+    const count = await this.prisma.savedRepository.count({
+      where: { userId, repositoryId },
     });
-    return records.map(toRecord);
+    return count > 0;
+  }
+
+  async saveRepository(userId: string, repositoryId: string): Promise<{ saved: boolean; savedAt: Date }> {
+    const saved = await this.prisma.savedRepository.upsert({
+      where: { userId_repositoryId: { userId, repositoryId } },
+      create: { userId, repositoryId },
+      update: {},
+    });
+    return { saved: true, savedAt: saved.savedAt };
+  }
+
+  async unsaveRepository(userId: string, repositoryId: string): Promise<{ removed: boolean }> {
+    try {
+      await this.prisma.savedRepository.delete({
+        where: { userId_repositoryId: { userId, repositoryId } },
+      });
+      return { removed: true };
+    } catch {
+      return { removed: false };
+    }
+  }
+
+  async listSaved(
+    userId: string,
+    options?: { page?: number; pageSize?: number }
+  ): Promise<PaginatedRepositories<SavedRepositoryRecord>> {
+    const page = Math.max(1, options?.page ?? 1);
+    const pageSize = Math.min(100, Math.max(1, options?.pageSize ?? 20));
+    const skip = (page - 1) * pageSize;
+
+    const [items, total] = await Promise.all([
+      this.prisma.savedRepository.findMany({
+        where: { userId },
+        orderBy: { savedAt: 'desc' },
+        skip,
+        take: pageSize,
+        include: { repository: true },
+      }),
+      this.prisma.savedRepository.count({ where: { userId } }),
+    ]);
+
+    const totalPages = Math.ceil(total / pageSize) || 1;
+
+    return {
+      items: items.map((item) => ({
+        id: item.id,
+        userId: item.userId,
+        repositoryId: item.repositoryId,
+        savedAt: item.savedAt,
+        repository: item.repository ? toRecord(item.repository) : undefined,
+      })),
+      total,
+      page,
+      pageSize,
+      totalPages,
+    };
   }
 }
 
@@ -114,5 +251,42 @@ function toRecord(row: PrismaRepositoryRow): RepositoryRecord {
     ...(row.lastSyncedAt !== null ? { lastSyncedAt: row.lastSyncedAt } : {}),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+  };
+}
+
+function toDetailRecord(row: any, currentUserId?: string): RepositoryDetailRecord {
+  const base = toRecord(row);
+  const technologies = (row.technologies ?? []).map((rt: any) => ({
+    id: rt.technology.id,
+    name: rt.technology.name,
+    slug: rt.technology.slug,
+    category: rt.technology.category,
+  }));
+
+  const categories = (row.categories ?? []).map((rc: any) => ({
+    id: rc.category.id,
+    name: rc.category.name,
+    slug: rc.category.slug,
+    description: rc.category.description,
+  }));
+
+  const latestAi = row.aiMetadata?.[0];
+  const aiSummary = latestAi
+    ? {
+        summary: latestAi.summaryText ?? '',
+        aiModel: latestAi.aiModel ?? undefined,
+        confidenceScore: latestAi.confidenceScore ? Number(latestAi.confidenceScore) : undefined,
+        generatedAt: latestAi.generatedAt,
+      }
+    : undefined;
+
+  const isSaved = currentUserId ? (row.savedBy?.length ?? 0) > 0 : false;
+
+  return {
+    ...base,
+    technologies,
+    categories,
+    aiSummary,
+    isSaved,
   };
 }

@@ -50,10 +50,68 @@ export interface RepositoryRecord {
   contributors?: string[];
 }
 
+export interface TechnologyTag {
+  id: string;
+  name: string;
+  slug: string;
+  category?: string | null;
+}
+
+export interface CategoryTag {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+}
+
+export interface AiSummaryInfo {
+  summary: string;
+  aiModel?: string;
+  confidenceScore?: number;
+  generatedAt?: Date;
+}
+
+export interface RepositoryDetailRecord extends RepositoryRecord {
+  technologies?: TechnologyTag[];
+  categories?: CategoryTag[];
+  aiSummary?: AiSummaryInfo;
+  isSaved?: boolean;
+}
+
+export interface RepositoryQueryOptions {
+  page?: number;
+  pageSize?: number;
+  q?: string;
+  language?: string;
+  sort?: 'popular' | 'newest' | 'updated';
+}
+
+export interface PaginatedRepositories<T = RepositoryRecord> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface SavedRepositoryRecord {
+  id: string;
+  userId: string;
+  repositoryId: string;
+  savedAt: Date;
+  repository?: RepositoryRecord;
+}
+
 export interface RepositoryRepository {
   findByGithubId(githubId: number): Promise<RepositoryRecord | null>;
+  findById(id: string, currentUserId?: string): Promise<RepositoryDetailRecord | null>;
+  findByFullName(owner: string, name: string, currentUserId?: string): Promise<RepositoryDetailRecord | null>;
   upsert(record: RepositoryRecord): Promise<RepositoryRecord>;
-  list(): Promise<RepositoryRecord[]>;
+  list(options?: RepositoryQueryOptions): Promise<PaginatedRepositories>;
+  saveRepository(userId: string, repositoryId: string): Promise<{ saved: boolean; savedAt: Date }>;
+  unsaveRepository(userId: string, repositoryId: string): Promise<{ removed: boolean }>;
+  isSaved(userId: string, repositoryId: string): Promise<boolean>;
+  listSaved(userId: string, options?: { page?: number; pageSize?: number }): Promise<PaginatedRepositories<SavedRepositoryRecord>>;
 }
 
 export interface QueueProducer {
