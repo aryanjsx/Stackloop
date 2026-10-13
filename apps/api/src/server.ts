@@ -12,6 +12,7 @@ import { RepositoryController } from './repositories/controllers/repository.cont
 import { RepositoryCollectorService } from './repositories/services/repository-collector.service.js';
 import { GitHubService } from './repositories/services/github.service.js';
 import { PrismaRepositoryRepository } from './repositories/repositories/prisma-repository.repository.js';
+import { CloudTasksQueueProducer } from './repositories/services/cloud-tasks-queue.producer.js';
 
 /**
  * Process entrypoint. Composes the real, database-backed implementations and starts listening.
@@ -51,25 +52,28 @@ async function main(): Promise<void> {
     refreshTokenTtlSeconds: config.auth.refreshTokenTtlSeconds,
   });
 
+  const repositoryRepository = new PrismaRepositoryRepository(prisma);
+  const queueProducer = new CloudTasksQueueProducer({
+    aiServiceUrl: process.env.AI_SERVICE_URL,
+    cloudTasksSecret: process.env.CLOUD_TASKS_SECRET,
+    repositoryRepository,
+  });
+
   const collectorService = new RepositoryCollectorService({
     githubService: new GitHubService({
       baseUrl: config.github.apiBaseUrl,
       token: config.github.token ?? '',
       rateLimitBuffer: 5,
     }),
-    // Ingested repositories now land in PostgreSQL rather than an in-memory Map.
-    repositoryRepository: new PrismaRepositoryRepository(prisma),
-    queueProducer: {
-      // Still a stub. Real queueing is Phase 5 (AI & Discovery Engine); recorded in the
-      // phase tracker so it is not mistaken for finished work.
-      enqueueSummaryJob: async (payload) => ({ id: payload.repositoryId, queued: false }),
-      enqueueSearchIndexJob: async (payload) => ({ id: payload.repositoryId, queued: false }),
-    },
+    repositoryRepository,
+    queueProducer,
   });
 
   const app = createApp({
     authService,
-    repositoryController: new RepositoryController(collectorService),
+    repositoryController: new RepositoryController(collectorService, repositoryRepository),
+    repositoryRepository,
+    internalSecret: process.env.INTERNAL_SERVICE_SECRET || process.env.CLOUD_TASKS_SECRET,
     isProduction: config.isProduction,
     webAppOrigin: config.webAppOrigin,
     accessTokenTtlSeconds: config.auth.accessTokenTtlSeconds,

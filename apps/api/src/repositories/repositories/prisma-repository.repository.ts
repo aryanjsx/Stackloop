@@ -1,10 +1,12 @@
-import type { PrismaClient } from '@prisma/client';
+import { Prisma, type PrismaClient } from '@prisma/client';
 import type {
+  AiSummaryInfo,
   PaginatedRepositories,
   RepositoryDetailRecord,
   RepositoryQueryOptions,
   RepositoryRecord,
   RepositoryRepository,
+  SaveAiSummaryInput,
   SavedRepositoryRecord,
 } from '../types.js';
 
@@ -196,6 +198,55 @@ export class PrismaRepositoryRepository implements RepositoryRepository {
       page,
       pageSize,
       totalPages,
+    };
+  }
+
+  async saveAiSummary(repositoryId: string, input: SaveAiSummaryInput): Promise<AiSummaryInfo> {
+    const aiRecord = await this.prisma.repositoryAiMetadata.create({
+      data: {
+        repositoryId,
+        summaryText: input.summaryText,
+        aiModel: input.aiModel ?? 'gemini-3.8',
+        confidenceScore: input.confidenceScore !== undefined ? new Prisma.Decimal(input.confidenceScore) : null,
+        summaryVersion: 'v1',
+      },
+    });
+
+    if (input.technologies && input.technologies.length > 0) {
+      for (const tech of input.technologies) {
+        const slug = tech.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        if (!slug) continue;
+
+        const record = await this.prisma.technology.upsert({
+          where: { slug },
+          create: { slug, name: tech.name, category: tech.category ?? null },
+          update: tech.category ? { category: tech.category } : {},
+        });
+
+        await this.prisma.repositoryTechnology.upsert({
+          where: {
+            repositoryId_technologyId: {
+              repositoryId,
+              technologyId: record.id,
+            },
+          },
+          create: {
+            repositoryId,
+            technologyId: record.id,
+            confidenceScore: tech.confidence !== undefined ? new Prisma.Decimal(tech.confidence) : new Prisma.Decimal(1.0),
+          },
+          update: {
+            confidenceScore: tech.confidence !== undefined ? new Prisma.Decimal(tech.confidence) : new Prisma.Decimal(1.0),
+          },
+        });
+      }
+    }
+
+    return {
+      summary: aiRecord.summaryText ?? '',
+      aiModel: aiRecord.aiModel ?? undefined,
+      confidenceScore: aiRecord.confidenceScore ? Number(aiRecord.confidenceScore) : undefined,
+      generatedAt: aiRecord.generatedAt,
     };
   }
 }

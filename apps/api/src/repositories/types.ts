@@ -102,6 +102,13 @@ export interface SavedRepositoryRecord {
   repository?: RepositoryRecord;
 }
 
+export interface SaveAiSummaryInput {
+  summaryText: string;
+  aiModel?: string;
+  confidenceScore?: number;
+  technologies?: Array<{ name: string; category?: string | null; confidence?: number }>;
+}
+
 export interface RepositoryRepository {
   findByGithubId(githubId: number): Promise<RepositoryRecord | null>;
   findById(id: string, currentUserId?: string): Promise<RepositoryDetailRecord | null>;
@@ -112,6 +119,7 @@ export interface RepositoryRepository {
   unsaveRepository(userId: string, repositoryId: string): Promise<{ removed: boolean }>;
   isSaved(userId: string, repositoryId: string): Promise<boolean>;
   listSaved(userId: string, options?: { page?: number; pageSize?: number }): Promise<PaginatedRepositories<SavedRepositoryRecord>>;
+  saveAiSummary(repositoryId: string, input: SaveAiSummaryInput): Promise<AiSummaryInfo>;
 }
 
 export interface QueueProducer {

@@ -1,16 +1,21 @@
 import { randomUUID } from 'node:crypto';
 import type {
+  AiSummaryInfo,
   PaginatedRepositories,
   RepositoryDetailRecord,
   RepositoryQueryOptions,
   RepositoryRecord,
   RepositoryRepository,
+  SaveAiSummaryInput,
   SavedRepositoryRecord,
+  TechnologyTag,
 } from '../types.js';
 
 export class InMemoryRepositoryRepository implements RepositoryRepository {
   private readonly records = new Map<number, RepositoryRecord>();
   private readonly saved = new Map<string, SavedRepositoryRecord>();
+  private readonly aiSummaries = new Map<string, AiSummaryInfo>();
+  private readonly technologies = new Map<string, TechnologyTag[]>();
 
   async findByGithubId(githubId: number): Promise<RepositoryRecord | null> {
     return this.records.get(githubId) ?? null;
@@ -22,8 +27,9 @@ export class InMemoryRepositoryRepository implements RepositoryRepository {
         const isSaved = currentUserId ? await this.isSaved(currentUserId, record.id) : false;
         return {
           ...record,
-          technologies: [],
+          technologies: this.technologies.get(record.id) ?? [],
           categories: [],
+          aiSummary: this.aiSummaries.get(record.id),
           isSaved,
         };
       }
@@ -38,8 +44,9 @@ export class InMemoryRepositoryRepository implements RepositoryRepository {
         const isSaved = currentUserId ? await this.isSaved(currentUserId, record.id) : false;
         return {
           ...record,
-          technologies: [],
+          technologies: this.technologies.get(record.id) ?? [],
           categories: [],
+          aiSummary: this.aiSummaries.get(record.id),
           isSaved,
         };
       }
@@ -154,5 +161,29 @@ export class InMemoryRepositoryRepository implements RepositoryRepository {
       pageSize,
       totalPages,
     };
+  }
+
+  async saveAiSummary(repositoryId: string, input: SaveAiSummaryInput): Promise<AiSummaryInfo> {
+    const summaryInfo: AiSummaryInfo = {
+      summary: input.summaryText,
+      aiModel: input.aiModel ?? 'gemini-3.8',
+      confidenceScore: input.confidenceScore,
+      generatedAt: new Date(),
+    };
+    this.aiSummaries.set(repositoryId, summaryInfo);
+
+    if (input.technologies && input.technologies.length > 0) {
+      const existing = this.technologies.get(repositoryId) ?? [];
+      for (const t of input.technologies) {
+        const slug = t.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        if (!slug) continue;
+        if (!existing.some((e) => e.slug === slug)) {
+          existing.push({ id: randomUUID(), name: t.name, slug, category: t.category });
+        }
+      }
+      this.technologies.set(repositoryId, existing);
+    }
+
+    return summaryInfo;
   }
 }

@@ -35,7 +35,7 @@ function extractUser(req: Request) {
 }
 
 export class RepositoryController {
-  private readonly repositoryRepository: RepositoryRepository;
+  public readonly repositoryRepository: RepositoryRepository;
 
   constructor(
     private readonly collectorService: RepositoryCollectorService,

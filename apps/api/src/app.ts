@@ -6,12 +6,16 @@ import { createAuthRouter } from './auth/routes.js';
 import type { AuthService } from './auth/services/auth.service.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
 import { createRepositoryRouter, createSavedRepositoryRouter } from './repositories/routes.js';
+import { createInternalRouter } from './repositories/internal.routes.js';
 import type { RepositoryController } from './repositories/controllers/repository.controller.js';
+import type { RepositoryRepository } from './repositories/types.js';
 
 export interface CreateAppOptions {
   authService: AuthService;
   /** Omitted in tests that only exercise authentication. */
   repositoryController?: RepositoryController;
+  repositoryRepository?: RepositoryRepository;
+  internalSecret?: string;
   isProduction: boolean;
   webAppOrigin: string;
   accessTokenTtlSeconds: number;
@@ -78,6 +82,17 @@ export function createApp(options: CreateAppOptions): Express {
       createSavedRepositoryRouter({
         authService: options.authService,
         controller: options.repositoryController,
+      }),
+    );
+  }
+
+  const repoRepo = options.repositoryRepository ?? options.repositoryController?.repositoryRepository;
+  if (repoRepo) {
+    app.use(
+      '/internal',
+      createInternalRouter({
+        repositoryRepository: repoRepo,
+        internalSecret: options.internalSecret,
       }),
     );
   }
