@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/build-with-gemini-poster.png" alt="#BuildWithGemini — StackLoop AI-Powered Repository Discovery" width="100%" />
+  <img src="./assets/build-with-gemini-banner.png" alt="#BuildWithGemini — StackLoop AI-Powered Repository Discovery" width="100%" />
 </p>
 
 # StackLoop — AI-Powered GitHub Discovery & Contribution Platform
