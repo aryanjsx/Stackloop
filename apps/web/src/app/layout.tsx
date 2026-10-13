@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Navbar } from '../components/navbar';
+import { AiAgentWidget } from '../components/ai-agent-widget';
 
 export const metadata: Metadata = {
   title: 'StackLoop — AI-Powered GitHub Discovery',
@@ -33,6 +34,7 @@ export default function RootLayout({
             </div>
           </div>
         </footer>
+        <AiAgentWidget />
       </body>
     </html>
   );

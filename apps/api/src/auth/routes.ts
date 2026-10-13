@@ -54,6 +54,8 @@ export function createAuthRouter({
   router.post('/logout', csrfProtection(), requireAuth(authService), controller.logout);
 
   router.get('/me', requireAuth(authService), controller.me);
+  router.get('/profile/preferences', requireAuth(authService), controller.getPreferences);
+  router.patch('/profile/preferences', csrfProtection(), requireAuth(authService), controller.updatePreferences);
 
   return router;
 }

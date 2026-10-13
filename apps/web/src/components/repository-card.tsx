@@ -1,11 +1,14 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import type { Repository } from '../lib/types';
 import { BookmarkButton } from './bookmark-button';
+import { StarButton } from './star-button';
+import { ForkModal } from './fork-modal';
+import { ShareModal } from './share-modal';
 import { formatNumber, formatDate, getLanguageColor } from '../lib/utils';
-import { Star, GitFork, ShieldCheck, Sparkles, ExternalLink } from 'lucide-react';
+import { GitFork, ShieldCheck, Sparkles, ExternalLink, Share2 } from 'lucide-react';
 
 interface RepositoryCardProps {
   repository: Repository;
@@ -18,6 +21,8 @@ export function RepositoryCard({
   isSaved = false,
   onBookmarkToggle,
 }: RepositoryCardProps) {
+  const [isForkOpen, setIsForkOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const languageColor = getLanguageColor(repository.language);
 
   return (
@@ -44,7 +49,19 @@ export function RepositoryCard({
             </Link>
           </div>
 
-          <div className="flex items-center gap-1.5 flex-shrink-0">
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsShareOpen(true);
+              }}
+              title="Share repository"
+              className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-gray-800 rounded-lg transition border border-transparent hover:border-gray-700"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+            </button>
             <BookmarkButton
               repositoryId={repository.id}
               initialSaved={isSaved}
@@ -71,7 +88,7 @@ export function RepositoryCard({
 
       {/* Card Footer: Language, Stars, Forks, AI badge */}
       <div className="pt-3 border-t border-gray-800/80 flex items-center justify-between text-xs text-gray-400">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           {repository.language && (
             <div className="flex items-center gap-1.5 font-medium">
               <span
@@ -82,15 +99,26 @@ export function RepositoryCard({
             </div>
           )}
 
-          <div className="flex items-center gap-1 text-gray-400 hover:text-gray-200 transition">
-            <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400/20" />
-            <span>{formatNumber(repository.stargazersCount)}</span>
-          </div>
+          <StarButton
+            repositoryId={repository.id}
+            initialStars={repository.stargazersCount}
+            size="sm"
+            showCount={true}
+          />
 
-          <div className="flex items-center gap-1 text-gray-400">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsForkOpen(true);
+            }}
+            title="Fork repository"
+            className="flex items-center gap-1 text-gray-400 hover:text-blue-300 hover:bg-gray-800 px-2 py-1 rounded-lg border border-transparent hover:border-gray-700 transition"
+          >
             <GitFork className="w-3.5 h-3.5" />
             <span>{formatNumber(repository.forksCount)}</span>
-          </div>
+          </button>
         </div>
 
         <div className="flex items-center gap-2">
@@ -103,6 +131,17 @@ export function RepositoryCard({
           </span>
         </div>
       </div>
+
+      <ForkModal
+        repository={repository}
+        isOpen={isForkOpen}
+        onClose={() => setIsForkOpen(false)}
+      />
+      <ShareModal
+        repository={repository}
+        isOpen={isShareOpen}
+        onClose={() => setIsShareOpen(false)}
+      />
     </div>
   );
 }

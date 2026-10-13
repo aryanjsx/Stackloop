@@ -27,6 +27,14 @@ export function createRepositoryRouter({
   router.post('/:id/save', csrfProtection(), requireAuth(authService), controller.saveRepository);
   router.delete('/:id/save', csrfProtection(), requireAuth(authService), controller.unsaveRepository);
 
+  // AI Agent endpoints
+  router.post('/ai-discover', optionalAuth(authService), controller.aiDiscover);
+  router.post('/:id/ai-describe', optionalAuth(authService), controller.aiDescribe);
+
+  // GitHub Actions (Star and Fork)
+  router.post('/:id/star', optionalAuth(authService), controller.starRepository);
+  router.post('/:id/fork', optionalAuth(authService), controller.forkRepository);
+
   // Public repository discovery and lookup (optionalAuth checks if user has saved this repo)
   router.get('/by-name/:owner/:name', optionalAuth(authService), controller.getByOwnerAndName);
   router.get('/:id', optionalAuth(authService), controller.getById);

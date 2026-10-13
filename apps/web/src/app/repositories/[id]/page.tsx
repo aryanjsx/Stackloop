@@ -6,6 +6,9 @@ import { useRouter } from 'next/navigation';
 import { fetchRepositoryById } from '../../../lib/api';
 import type { RepositoryDetail } from '../../../lib/types';
 import { BookmarkButton } from '../../../components/bookmark-button';
+import { StarButton } from '../../../components/star-button';
+import { ForkModal } from '../../../components/fork-modal';
+import { ShareModal } from '../../../components/share-modal';
 import { AiSummaryCard } from '../../../components/ai-summary-card';
 import { formatNumber, formatDate, getLanguageColor } from '../../../lib/utils';
 import {
@@ -22,6 +25,7 @@ import {
   Tags,
   ShieldCheck,
   Loader2,
+  Share2,
 } from 'lucide-react';
 
 export default function RepositoryDetailPage({
@@ -34,6 +38,8 @@ export default function RepositoryDetailPage({
   const [repo, setRepo] = useState<RepositoryDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isForkOpen, setIsForkOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -111,7 +117,30 @@ export default function RepositoryDetailPage({
             </h1>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <StarButton
+              repositoryId={repo.id}
+              initialStars={repo.stargazersCount}
+              size="md"
+            />
+            <button
+              type="button"
+              onClick={() => setIsForkOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-gray-800 hover:bg-gray-700/80 text-gray-200 border border-gray-700 rounded-xl text-xs sm:text-sm font-medium transition shadow-sm"
+              title="Fork on GitHub"
+            >
+              <GitFork className="w-4 h-4 text-blue-400" />
+              <span>Fork</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsShareOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-gray-800 hover:bg-gray-700/80 text-gray-200 border border-gray-700 rounded-xl text-xs sm:text-sm font-medium transition shadow-sm"
+              title="Share repository"
+            >
+              <Share2 className="w-4 h-4 text-teal-400" />
+              <span>Share</span>
+            </button>
             <BookmarkButton repositoryId={repo.id} initialSaved={repo.isSaved} size="md" />
             <a
               href={repo.repositoryUrl}
@@ -267,6 +296,17 @@ export default function RepositoryDetailPage({
           )}
         </div>
       </div>
+
+      <ForkModal
+        repository={repo}
+        isOpen={isForkOpen}
+        onClose={() => setIsForkOpen(false)}
+      />
+      <ShareModal
+        repository={repo}
+        isOpen={isShareOpen}
+        onClose={() => setIsShareOpen(false)}
+      />
     </div>
   );
 }

@@ -148,6 +148,56 @@ export class AuthController {
     }
   };
 
+  /** GET /auth/profile/preferences — returns user profile preferences */
+  getPreferences = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const principal = req.principal;
+      if (!principal) {
+        throw new UnauthorizedError();
+      }
+
+      const prefs = this.userPreferences.get(principal.user.id) ?? {
+        languages: ['TypeScript', 'Python'],
+        topics: ['Artificial Intelligence / LLMs', 'Web Frameworks', 'DevOps & Cloud'],
+        experienceLevel: 'Intermediate',
+        explanationStyle: 'Deep Architectural',
+      };
+
+      res.status(200).json({ data: prefs });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /** PATCH /auth/profile/preferences — updates user profile preferences */
+  updatePreferences = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const principal = req.principal;
+      if (!principal) {
+        throw new UnauthorizedError();
+      }
+
+      const current = this.userPreferences.get(principal.user.id) ?? {
+        languages: ['TypeScript', 'Python'],
+        topics: ['Artificial Intelligence / LLMs', 'Web Frameworks', 'DevOps & Cloud'],
+        experienceLevel: 'Intermediate',
+        explanationStyle: 'Deep Architectural',
+      };
+
+      const updated = {
+        ...current,
+        ...(req.body || {}),
+      };
+
+      this.userPreferences.set(principal.user.id, updated);
+      res.status(200).json({ data: updated });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  private readonly userPreferences = new Map<string, any>();
+
   private applySessionCookies(res: Response, tokens: AuthTokens): void {
     setAuthCookies(res, tokens, this.config);
     setCsrfCookie(res, randomBytes(32).toString('base64url'), this.config);

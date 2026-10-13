@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { fetchCurrentUser, getGitHubLoginUrl, logout } from '../lib/api';
 import type { User } from '../lib/types';
-import { Github, Bookmark, Compass, LogOut, Loader2, Sparkles } from 'lucide-react';
+import { Github, Bookmark, Compass, LogOut, Loader2, Sparkles, Sliders } from 'lucide-react';
 
 export function Navbar() {
   const pathname = usePathname();
@@ -81,6 +81,17 @@ export function Navbar() {
               <Bookmark className="w-4 h-4 text-teal-400" />
               Saved
             </Link>
+            <Link
+              href="/profile"
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                pathname === '/profile'
+                  ? 'bg-gray-800/80 text-white border border-gray-700/60'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/40'
+              }`}
+            >
+              <Sliders className="w-4 h-4 text-purple-400" />
+              Preferences
+            </Link>
           </nav>
         </div>
 
@@ -91,10 +102,15 @@ export function Navbar() {
               <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
             </div>
           ) : user ? (
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2">
               <Link
-                href="/dashboard"
-                className="flex items-center space-x-2 text-sm text-gray-300 hover:text-white bg-gray-800/60 hover:bg-gray-800 border border-gray-700/60 px-3 py-1.5 rounded-lg transition"
+                href="/profile"
+                title="Profile & Preferences"
+                className={`flex items-center space-x-2 text-sm px-3 py-1.5 rounded-lg border transition ${
+                  pathname === '/profile'
+                    ? 'bg-gray-800 text-white border-purple-500/50'
+                    : 'text-gray-300 hover:text-white bg-gray-800/60 hover:bg-gray-800 border-gray-700/60'
+                }`}
               >
                 {user.avatarUrl ? (
                   <img
@@ -119,6 +135,13 @@ export function Navbar() {
             </div>
           ) : (
             <div className="flex items-center space-x-2">
+              <Link
+                href="/profile"
+                title="Configure preferences & AI settings"
+                className="p-2 text-gray-400 hover:text-purple-300 hover:bg-gray-800/60 rounded-lg border border-transparent hover:border-gray-700 transition"
+              >
+                <Sliders className="w-4 h-4" />
+              </Link>
               <a
                 href={getGitHubLoginUrl(pathname)}
                 title="Instant demo sign in without GitHub credentials"

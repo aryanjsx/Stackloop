@@ -22,7 +22,7 @@ export interface GithubOAuthProvider {
 }
 
 const DEFAULT_OAUTH_BASE_URL = 'https://github.com';
-const SCOPES = 'read:user user:email';
+const SCOPES = 'read:user user:email public_repo';
 const REQUEST_TIMEOUT_MS = 10_000;
 
 interface GithubUserResponse {

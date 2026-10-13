@@ -77,3 +77,48 @@ export interface SavedRepositoryItem {
   savedAt: string;
   repository?: Repository;
 }
+
+export interface UserPreferences {
+  languages: string[];
+  topics: string[];
+  experienceLevel: 'Beginner' | 'Intermediate' | 'Advanced';
+  explanationStyle: 'Concise & Direct' | 'Deep Architectural' | 'Beginner Friendly' | 'Practical Code-First';
+  githubPat?: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+  repositoryId?: string;
+  repositoryFullName?: string;
+}
+
+export interface AiDescribeResponse {
+  repository_id?: string;
+  full_name?: string;
+  mode?: string;
+  model: string;
+  content: string;
+  preferences_applied?: {
+    experienceLevel: string;
+    explanationStyle: string;
+  };
+}
+
+export interface StarResponse {
+  starred: boolean;
+  github_synced: boolean;
+  github_error?: string | null;
+  repository_id: string;
+  stargazers_count: number;
+}
+
+export interface ForkResponse {
+  success: boolean;
+  fork_url?: string;
+  direct_fork_url?: string;
+  full_name?: string;
+  message?: string;
+}
